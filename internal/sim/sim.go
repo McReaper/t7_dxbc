@@ -66,6 +66,9 @@ func New(p *dxbc.Program, ref *dxbc.Reflection) (*Machine, error) {
 		}
 		m.body = append(m.body, *in)
 	}
+	if err := m.checkLimits(); err != nil {
+		return nil, err
+	}
 	f, err := newFlow(m.body)
 	if err != nil {
 		return nil, err
@@ -243,6 +246,29 @@ func (f *flow) close(stack []*frame, i int, in *dxbc.Instruction) error {
 		f.cases[fr.start] = append(f.cases[fr.start], caseAt{value: v, pc: i})
 	case dxbc.OpDefault:
 		f.cases[fr.start] = append(f.cases[fr.start], caseAt{pc: i, isDefault: true})
+	}
+	return nil
+}
+
+// Direct3D 11's limits on what a shader declares.
+const (
+	maxTemps        = 4096
+	maxGroupShared  = 32768 / 4 // dwords
+	maxGroupThreads = 1024
+)
+
+func (m *Machine) checkLimits() error {
+	n := uint64(m.temps)
+	for _, size := range m.idx {
+		n += uint64(size)
+	}
+	var shared uint64
+	for _, d := range m.tgsm {
+		shared += uint64(d[1])
+	}
+	threads := uint64(m.group[0]) * uint64(m.group[1]) * uint64(m.group[2])
+	if n > maxTemps || shared > maxGroupShared || threads > maxGroupThreads {
+		return fmt.Errorf("declarations past Direct3D's limits: %d temporaries, %d dwords shared, %d threads", n, shared, threads)
 	}
 	return nil
 }

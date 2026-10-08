@@ -116,6 +116,9 @@ func (e *emitter) emit() (string, error) {
 			body = append(body, in)
 		}
 	}
+	if err := e.checkLimits(); err != nil {
+		return "", err
+	}
 	e.findBanks(body)
 	e.declarations()
 	e.signatureStructs()
@@ -139,6 +142,40 @@ func (e *emitter) emit() (string, error) {
 		return src, fmt.Errorf("not decompiled: %s", strings.Join(ops, ", "))
 	}
 	return src, nil
+}
+
+// Direct3D 11's limits on what a shader declares.
+const (
+	maxTemps        = 4096  // temporaries, indexable ones included
+	maxGroupShared  = 32768 // bytes of group-shared memory
+	maxGroupThreads = 1024
+)
+
+// checkLimits rejects declarations no valid shader makes, which would only
+// make the HLSL huge.
+func (e *emitter) checkLimits() error {
+	n := uint64(e.temps)
+	for _, d := range e.idxTemps {
+		n += uint64(d[0])
+	}
+	if n > maxTemps {
+		return fmt.Errorf("%d temporaries declared, more than Direct3D allows", n)
+	}
+	var shared uint64
+	for _, d := range e.tgsm {
+		if d[0] == 0 {
+			shared += uint64(d[1])
+		} else {
+			shared += uint64(d[0]) * uint64(d[1])
+		}
+	}
+	if shared > maxGroupShared {
+		return fmt.Errorf("%d bytes of group-shared memory declared, more than Direct3D allows", shared)
+	}
+	if t := uint64(e.group[0]) * uint64(e.group[1]) * uint64(e.group[2]); t > maxGroupThreads {
+		return fmt.Errorf("%d threads per group declared, more than Direct3D allows", t)
+	}
+	return nil
 }
 
 // findBanks runs the statements without writing them until the temporaries

@@ -271,11 +271,16 @@ func bfi(t *thread, in *dxbc.Instruction) error {
 	ins, base := t.isrc(&in.Operands[3]), t.isrc(&in.Operands[4])
 	var v Value
 	for i := range v {
-		width, off := w[i]&31, o[i]&31
-		m := (uint32(1)<<width - 1) << off
-		v[i] = ins[i]<<off&m | base[i]&^m
+		v[i] = bfiBits(w[i], o[i], ins[i], base[i])
 	}
 	return t.store(&in.Operands[0], v, false)
+}
+
+// bfiBits inserts the low w bits of ins into base at bit o.
+func bfiBits(w, o, ins, base uint32) uint32 {
+	w, o = w&31, o&31
+	m := (uint32(1)<<w - 1) << o
+	return ins<<o&m | base&^m
 }
 
 func ubfe(w, o, s uint32) uint32 {

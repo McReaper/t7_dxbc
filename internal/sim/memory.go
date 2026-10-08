@@ -284,6 +284,7 @@ func initResources() {
 	ops[dxbc.OpLd], ops[dxbc.OpLdMs] = ld, ld
 	ops[dxbc.OpLdUavTyped], ops[dxbc.OpStoreUavTyped] = ldUAVTyped, storeUAVTyped
 	ops[dxbc.OpResinfo], ops[dxbc.OpBufinfo], ops[dxbc.OpLod] = resinfo, bufinfo, lod
+	ops[dxbc.OpSampleInfo], ops[dxbc.OpSamplePos] = sampleinfo, samplepos
 	ops[dxbc.OpLdStructured], ops[dxbc.OpStoreStructured] = ldStructured, storeStructured
 	ops[dxbc.OpLdRaw], ops[dxbc.OpStoreRaw] = ldRaw, storeRaw
 	for op := range atomicFns {

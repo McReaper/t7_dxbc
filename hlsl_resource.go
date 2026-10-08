@@ -269,7 +269,8 @@ func (e *emitter) storeTypedStatement(in *Instruction) {
 // components of resinfo's result they fill.
 var resinfoOuts = map[Dimension]string{
 	DimTexture1D: "xw", DimTexture1DArray: "xyw", DimTexture2D: "xyw", DimTexture2DArray: "xyzw",
-	DimTexture3D: "xyzw", DimTextureCube: "xyw", DimTextureCubeArray: "xyzw",
+	DimTexture3D: "xyzw", DimTextureCube: "xyw", DimTextureCubeArray: "xyzw", DimTexture2DMS: "xyw",
+	DimTexture2DMSArray: "xyzw",
 }
 
 // resinfoStatement writes resinfo: dest, mip, resource; the result is width,
@@ -290,13 +291,16 @@ func (e *emitter) resinfoStatement(in *Instruction, sat bool) {
 	if mode == 2 {
 		t = tUint
 	}
+	// a UAV or a multisampled texture has one mip level: no level to ask
+	// for, and none counted (a multisampled one counts its samples there)
 	var args []string
 	uav := b.Input.IsUAV()
-	if !uav {
+	ms := b.Dim == DimTexture2DMS || b.Dim == DimTexture2DMSArray
+	if !uav && !ms {
 		args = append(args, e.read(&in.Operands[1], picks(&in.Operands[1], 1), tUint))
 	}
 	for _, c := range outs {
-		if !uav || c != 'w' { // a UAV has one mip level, and doesn't say so
+		if !uav || c != 'w' {
 			args = append(args, "dxbc_dims."+string(c))
 		}
 	}
@@ -304,7 +308,7 @@ func (e *emitter) resinfoStatement(in *Instruction, sat bool) {
 	e.depth++
 	e.line("%s dxbc_dims = 0;", vecType(t, 4))
 	e.line("%s.GetDimensions(%s);", res, strings.Join(args, ", "))
-	if uav {
+	if uav || ms {
 		e.line("dxbc_dims.w = %s;", literal(1, t))
 	}
 	if mode == 1 {
@@ -504,4 +508,41 @@ func (e *emitter) storeRawStatement(in *Instruction) {
 		method += fmt.Sprint(n)
 	}
 	e.line("%s.%s(%s, %s);", res, method, addr, e.read(&in.Operands[2], picks(&in.Operands[2], mask), tUint))
+}
+
+// sampleinfoStatement writes sampleinfo: a multisampled texture's sample
+// count, in x.
+func (e *emitter) sampleinfoStatement(in *Instruction, sat bool) {
+	res, b := e.resourceName(&in.Operands[1])
+	if b == nil {
+		return
+	}
+	t := tFloat
+	if in.Token>>11&3 == 2 {
+		t = tUint
+	}
+	args := "dxbc_dims.y, dxbc_dims.z, dxbc_dims.x"
+	if b.Dim == DimTexture2DMSArray {
+		args = "dxbc_dims.y, dxbc_dims.z, dxbc_dims.w, dxbc_dims.x"
+	}
+	e.line("{")
+	e.depth++
+	e.line("%s dxbc_dims = 0;", vecType(t, 4))
+	e.line("%s.GetDimensions(%s);", res, args)
+	e.line("dxbc_dims.yzw = 0;")
+	e.write(&in.Operands[0], "dxbc_dims."+letters(picks(&in.Operands[1], destMask(&in.Operands[0]))), t, sat)
+	e.depth--
+	e.line("}")
+}
+
+// sampleposStatement writes samplepos: where a sample of a multisampled
+// texture lies in its pixel.
+func (e *emitter) sampleposStatement(in *Instruction, sat bool) {
+	res, b := e.resourceName(&in.Operands[1])
+	if b == nil {
+		return
+	}
+	idx := e.read(&in.Operands[2], picks(&in.Operands[2], 1), tInt)
+	call := fmt.Sprintf("float4(%s.GetSamplePosition(%s), 0, 0)", res, idx)
+	e.write(&in.Operands[0], call+"."+letters(picks(&in.Operands[1], destMask(&in.Operands[0]))), tFloat, sat)
 }

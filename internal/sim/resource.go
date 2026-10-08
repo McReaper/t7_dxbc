@@ -345,3 +345,26 @@ func bufinfo(t *thread, in *dxbc.Instruction) error {
 func lod(t *thread, in *dxbc.Instruction) error {
 	return t.storeFetched(in, &in.Operands[2], Value{}, sat(in))
 }
+
+// msSamples is a multisampled texture's sample count, and samplePositions
+// the standard pattern of four.
+const msSamples = 4
+
+var samplePositions = [msSamples][2]float32{{-0.125, -0.375}, {0.375, -0.125}, {-0.375, 0.125}, {0.125, 0.375}}
+
+func sampleinfo(t *thread, in *dxbc.Instruction) error {
+	v := Value{math.Float32bits(msSamples)}
+	if in.Token>>11&3 == 2 {
+		v = Value{msSamples}
+	}
+	return t.storeFetched(in, &in.Operands[1], v, sat(in))
+}
+
+func samplepos(t *thread, in *dxbc.Instruction) error {
+	i := t.src(&in.Operands[2])[0]
+	var v Value
+	if i < msSamples {
+		v = floats([4]float32{samplePositions[i][0], samplePositions[i][1]})
+	}
+	return t.storeFetched(in, &in.Operands[1], v, sat(in))
+}

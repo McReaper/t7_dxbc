@@ -163,6 +163,8 @@ func initResourceStatements() {
 	}
 	otherStatements[OpResinfo] = (*emitter).resinfoStatement
 	otherStatements[OpLod] = (*emitter).lodStatement
+	otherStatements[OpSampleInfo] = (*emitter).sampleinfoStatement
+	otherStatements[OpSamplePos] = (*emitter).sampleposStatement
 	otherStatements[OpLdStructured] = (*emitter).ldStructuredStatement
 	otherStatements[OpLdRaw] = (*emitter).ldRawStatement
 	noSat := map[Opcode]func(*emitter, *Instruction){

@@ -36,8 +36,8 @@ var alus = map[Opcode]alu{
 	OpUshr: {tUint, tUint, "$1 >> $2"}, OpAnd: {tUint, tUint, "$1 & $2"}, OpOr: {tUint, tUint, "$1 | $2"},
 	OpXor: {tUint, tUint, "$1 ^ $2"}, OpNot: {tUint, tUint, "~$1"}, OpUmin: {tUint, tUint, "min($1, $2)"},
 	OpUmax: {tUint, tUint, "max($1, $2)"}, OpUmad: {tUint, tUint, "$1 * $2 + $3"},
-	OpCountbits: {tUint, tUint, "countbits($1)"}, OpFirstbitHi: {tUint, tUint, "firstbithigh($1)"},
-	OpFirstbitLo: {tUint, tUint, "firstbitlow($1)"}, OpFirstbitShi: {tInt, tInt, "firstbithigh($1)"},
+	OpCountbits: {tUint, tUint, "countbits($1)"}, OpFirstbitHi: {tUint, tUint, "dxbc_firstbit_hi($1)"},
+	OpFirstbitLo: {tUint, tUint, "firstbitlow($1)"}, OpFirstbitShi: {tInt, tUint, "dxbc_firstbit_shi($1)"},
 	OpBfrev: {tUint, tUint, "reversebits($1)"},
 	OpFtoi:  {tFloat, tInt, "int$N($1)"}, OpFtou: {tFloat, tUint, "uint$N($1)"},
 	OpItof: {tInt, tFloat, "float$N($1)"}, OpUtof: {tUint, tFloat, "float$N($1)"},
@@ -94,6 +94,9 @@ func (e *emitter) aluStatement(in *Instruction, a alu, sat bool) {
 		expr = strings.ReplaceAll(expr, "$N", fmt.Sprint(n))
 	} else {
 		expr = strings.ReplaceAll(expr, "$N", "")
+	}
+	if name, _, ok := strings.Cut(a.form, "("); ok && strings.HasPrefix(name, "dxbc_") {
+		e.helpers[name] = true
 	}
 	for i := len(in.Operands) - 1; i >= 1; i-- {
 		src := e.read(&in.Operands[i], picks(&in.Operands[i], mask), a.in)
@@ -324,6 +327,10 @@ var helperSources = map[string]string{
 		"if (w + o < 32) return (s << (32 - (w + o))) >> (32 - w); return s >> o; }",
 	"dxbc_bfi": "uint dxbc_bfi(uint w, uint o, uint i, uint b) { w &= 31; o &= 31; " +
 		"uint m = ((1u << w) - 1) << o; return ((i << o) & m) | (b & ~m); }",
+	// firstbit_hi and firstbit_shi count from the most significant bit,
+	// firstbithigh from the least
+	"dxbc_firstbit_hi":  "uint dxbc_firstbit_hi(uint x) { uint b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }",
+	"dxbc_firstbit_shi": "uint dxbc_firstbit_shi(int x) { int b = firstbithigh(x); return b == -1 ? 0xffffffffu : 31 - b; }",
 }
 
 // readPair reads the two values a movc or swapc chooses between, in the type
