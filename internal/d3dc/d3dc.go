@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -76,7 +77,7 @@ func Disassemble(bytecode []byte) (string, error) {
 	if hr != 0 {
 		return "", fmt.Errorf("D3DDisassemble %#x", uint32(hr))
 	}
-	text := string(blobBytes(blob))
+	text := strings.TrimRight(string(blobBytes(blob)), "\x00") // the blob holds a C string
 	release(blob)
 	return text, nil
 }
