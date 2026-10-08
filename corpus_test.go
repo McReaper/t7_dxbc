@@ -81,3 +81,44 @@ func TestCorpusReflection(t *testing.T) {
 		t.Error(f)
 	}
 }
+
+func TestCorpusDisassembly(t *testing.T) {
+	paths := corpus(t)
+	kinds := map[string]int{}
+	examples := map[string]string{}
+	failed, lines := 0, 0
+	for _, p := range paths {
+		code, err := os.ReadFile(p)
+		if err != nil || len(code) < 4 || string(code[:4]) != "DXBC" {
+			continue
+		}
+		asm, err := d3dc.Disassemble(code)
+		if err != nil {
+			continue
+		}
+		diffs, mnems := disasmDiffs(code, asm)
+		if len(diffs) == 0 {
+			continue
+		}
+		failed++
+		lines += len(diffs)
+		for i, m := range mnems {
+			kinds[m]++
+			if _, ok := examples[m]; !ok {
+				examples[m] = filepath.Base(p) + ":\n  " + diffs[i]
+			}
+		}
+	}
+	t.Logf("%d shaders, %d with a difference (%d lines)", len(paths), failed, lines)
+	keys := make([]string, 0, len(kinds))
+	for k := range kinds {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return kinds[keys[i]] > kinds[keys[j]] })
+	for i, k := range keys {
+		if i == 25 {
+			break
+		}
+		t.Errorf("%d× %s — e.g. %s", kinds[k], k, examples[k])
+	}
+}
