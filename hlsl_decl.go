@@ -1,0 +1,164 @@
+package dxbc
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// declarations writes the structs, constant buffers, resources, samplers,
+// UAVs, the immediate constant buffer and the group-shared memory.
+func (e *emitter) declarations() {
+	e.line("// Decompiled by github.com/McReaper/dxbc")
+	e.line("")
+	e.structDecls()
+	// in the reflection's order, which the compiler keeps from the source
+	for i := range e.ref.Buffers {
+		for r, l := range e.cbuffers {
+			if l.buf == &e.ref.Buffers[i] {
+				e.cbufferDecl(r, l)
+			}
+		}
+	}
+	for i := range e.ref.Bindings {
+		e.resourceDecl(&e.ref.Bindings[i])
+	}
+	if len(e.icb) > 0 {
+		var rows []string
+		for i := 0; i+4 <= len(e.icb); i += 4 {
+			rows = append(rows, fmt.Sprintf("uint4(0x%08x, 0x%08x, 0x%08x, 0x%08x)", e.icb[i], e.icb[i+1], e.icb[i+2], e.icb[i+3]))
+		}
+		e.line("static const uint4 icb[%d] = { %s };", len(rows), strings.Join(rows, ", "))
+	}
+	gs := make([]uint32, 0, len(e.tgsm))
+	for g := range e.tgsm {
+		gs = append(gs, g)
+	}
+	sort.Slice(gs, func(i, j int) bool { return gs[i] < gs[j] })
+	for _, g := range gs {
+		d := e.tgsm[g]
+		if d[0] == 0 {
+			e.line("groupshared uint g%d[%d];", g, d[1]/4)
+		} else {
+			e.line("groupshared uint g%d[%d][%d];", g, d[1], d[0]/4)
+		}
+	}
+	e.line("")
+}
+
+// structDecls writes every struct type the buffers use, members first.
+func (e *emitter) structDecls() {
+	done := map[string]bool{}
+	var visit func(t *Type)
+	visit = func(t *Type) {
+		if t.Class != ClassStruct {
+			return
+		}
+		name := identifier(t.Name)
+		if done[name] {
+			return
+		}
+		done[name] = true
+		for _, m := range t.Members {
+			visit(m.Type)
+		}
+		e.line("struct %s", name)
+		e.line("{")
+		for _, m := range t.Members {
+			e.line("  %s %s%s;", declType(m.Type), identifier(m.Name), arraySuffix(m.Type))
+		}
+		e.line("};")
+		e.line("")
+	}
+	for _, l := range e.cbuffers {
+		for _, v := range l.vars {
+			visit(v.Type)
+		}
+	}
+	for _, t := range e.structs {
+		visit(t)
+	}
+}
+
+// cbufferDecl writes a constant buffer with each variable at its offset. The
+// $Globals buffer holds the shader's global variables: written as globals,
+// they get the same name back.
+func (e *emitter) cbufferDecl(reg uint32, l *cbufferLayout) {
+	if l.buf.Name == "$Globals" {
+		for _, v := range l.vars {
+			e.line("%s %s%s;", declType(v.Type), identifier(v.Name), arraySuffix(v.Type))
+		}
+		e.line("")
+		return
+	}
+	e.line("cbuffer %s : register(b%d)", identifier(l.buf.Name), reg)
+	e.line("{")
+	for _, v := range l.vars {
+		e.line("  %s %s%s : packoffset(%s);", declType(v.Type), identifier(v.Name), arraySuffix(v.Type), packOffset(v.Offset))
+	}
+	e.line("}")
+	e.line("")
+}
+
+var textureTypes = map[Dimension]string{
+	DimBuffer: "Buffer", DimTexture1D: "Texture1D", DimTexture1DArray: "Texture1DArray", DimTexture2D: "Texture2D",
+	DimTexture2DArray: "Texture2DArray", DimTexture2DMS: "Texture2DMS", DimTexture2DMSArray: "Texture2DMSArray",
+	DimTexture3D: "Texture3D", DimTextureCube: "TextureCube", DimTextureCubeArray: "TextureCubeArray",
+}
+
+// elementType is what a typed texture or buffer holds: float4, uint2,
+// unorm float4.
+func elementType(b *Binding) string {
+	t := b.Return.String()
+	if n := b.Components(); n > 1 {
+		t += fmt.Sprint(n)
+	}
+	return t
+}
+
+func (e *emitter) resourceDecl(b *Binding) {
+	name, reg := identifier(b.Name), b.Register()
+	switch b.Input {
+	case InputSampler:
+		kind := "SamplerState"
+		if b.Flags&BindComparisonSampler != 0 {
+			kind = "SamplerComparisonState"
+		}
+		e.line("%s %s : register(%s);", kind, name, reg)
+	case InputTexture:
+		kind, ok := textureTypes[b.Dim]
+		if !ok {
+			e.line("// %s: unknown texture dimension %d", name, b.Dim)
+			return
+		}
+		args := elementType(b)
+		if (b.Dim == DimTexture2DMS || b.Dim == DimTexture2DMSArray) && b.NumSamples > 0 {
+			args += fmt.Sprintf(", %d", b.NumSamples)
+		}
+		e.line("%s<%s> %s : register(%s);", kind, args, name, reg)
+	case InputStructured, InputUAVStructured, InputUAVAppendStructured, InputUAVConsumeStructured,
+		InputUAVStructuredWithCounter:
+		elem := "uint"
+		if t := e.structs[b.Name]; t != nil {
+			elem = declType(t)
+		}
+		e.line("%s<%s> %s : register(%s);", structuredKinds[b.Input], elem, name, reg)
+	case InputByteAddress:
+		e.line("ByteAddressBuffer %s : register(%s);", name, reg)
+	case InputUAVByteAddress:
+		e.line("RWByteAddressBuffer %s : register(%s);", name, reg)
+	case InputUAVTyped:
+		kind, ok := textureTypes[b.Dim]
+		if !ok {
+			e.line("// %s: unknown UAV dimension %d", name, b.Dim)
+			return
+		}
+		e.line("RW%s<%s> %s : register(%s);", kind, elementType(b), name, reg)
+	}
+}
+
+var structuredKinds = map[InputType]string{
+	InputStructured: "StructuredBuffer", InputUAVStructured: "RWStructuredBuffer",
+	InputUAVAppendStructured: "AppendStructuredBuffer", InputUAVConsumeStructured: "ConsumeStructuredBuffer",
+	InputUAVStructuredWithCounter: "RWStructuredBuffer",
+}

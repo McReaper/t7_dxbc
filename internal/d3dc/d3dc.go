@@ -32,6 +32,18 @@ func Available() bool { return dll.Load() == nil }
 // ("ps_5_0", "vs_5_0", "cs_5_0"). path names the source for #include and for
 // the compiler's messages.
 func Compile(src []byte, path, entry, target string) ([]byte, error) {
+	return CompileFlags(src, path, entry, target, 0)
+}
+
+// Compiler flags (D3DCOMPILE_*).
+const (
+	SkipOptimization   = 1 << 2
+	OptimizationLevel0 = 1 << 14
+	OptimizationLevel3 = 1 << 15
+)
+
+// CompileFlags is Compile with D3DCOMPILE_* flags.
+func CompileFlags(src []byte, path, entry, target string, flags uint32) ([]byte, error) {
 	if len(src) == 0 {
 		return nil, errors.New("empty source")
 	}
@@ -49,7 +61,7 @@ func Compile(src []byte, path, entry, target string) ([]byte, error) {
 	}
 	var code, msgs unsafe.Pointer
 	hr, _, _ := compile.Call(uintptr(unsafe.Pointer(&src[0])), uintptr(len(src)), uintptr(unsafe.Pointer(cpath)), 0,
-		standardFileInclude, uintptr(unsafe.Pointer(centry)), uintptr(unsafe.Pointer(ctarget)), 0, 0,
+		standardFileInclude, uintptr(unsafe.Pointer(centry)), uintptr(unsafe.Pointer(ctarget)), uintptr(flags), 0,
 		uintptr(unsafe.Pointer(&code)), uintptr(unsafe.Pointer(&msgs)))
 	text := ""
 	if msgs != nil {

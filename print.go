@@ -79,17 +79,19 @@ func (b Binding) DimName() string {
 }
 
 // Register names the register a binding occupies: t0, s1, cb2, u3.
-func (b Binding) Register() string {
-	prefix := "t"
+func (b Binding) Register() string { return fmt.Sprintf("%s%d", b.registerPrefix(), b.Point) }
+
+// registerPrefix names the register file a binding is in: t, s, cb, u.
+func (b Binding) registerPrefix() string {
 	switch {
 	case b.Input == InputCBuffer:
-		prefix = "cb"
+		return "cb"
 	case b.Input == InputSampler:
-		prefix = "s"
+		return "s"
 	case b.Input.IsUAV():
-		prefix = "u"
+		return "u"
 	}
-	return fmt.Sprintf("%s%d", prefix, b.Point)
+	return "t"
 }
 
 var systemValueNames = map[SystemValue]string{

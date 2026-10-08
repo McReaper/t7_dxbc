@@ -59,6 +59,18 @@ const (
 	OperandNull          OperandType = 13
 	OperandUAV           OperandType = 30
 	OperandTGSM          OperandType = 31
+
+	OperandPrimitiveID              OperandType = 11
+	OperandDepth                    OperandType = 12
+	OperandCoverageMask             OperandType = 15
+	OperandThreadID                 OperandType = 32
+	OperandThreadGroupID            OperandType = 33
+	OperandThreadIDInGroup          OperandType = 34
+	OperandInputCoverage            OperandType = 35
+	OperandThreadIDInGroupFlattened OperandType = 36
+	OperandDepthGreaterEqual        OperandType = 38
+	OperandDepthLessEqual           OperandType = 39
+	OperandStencilRef               OperandType = 41
 )
 
 // Selection is how a four-component operand picks its components.
