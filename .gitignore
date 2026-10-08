@@ -1,0 +1,6 @@
+# Reference material fetched for development, not part of the module
+/.ref/
+
+# Build output
+/dist/
+*.exe

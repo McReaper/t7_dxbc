@@ -1,0 +1,19 @@
+#!/bin/sh
+# gofmt, then golangci-lint (.golangci.yml) on the packages of the staged Go
+# files. Enable with: git config core.hooksPath .githooks
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go')
+[ -z "$files" ] && exit 0
+
+unformatted=$(gofmt -l $files)
+if [ -n "$unformatted" ]; then
+  echo "pre-commit: not gofmt-formatted (run: gofmt -w $(echo $unformatted)):" >&2
+  echo "$unformatted" >&2
+  exit 1
+fi
+
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "pre-commit: golangci-lint not on PATH, skipping the lint" >&2
+  exit 0
+fi
+pkgs=$(for f in $files; do echo "./$(dirname "$f")"; done | sort -u)
+exec golangci-lint run $pkgs
