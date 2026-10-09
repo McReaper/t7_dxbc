@@ -242,6 +242,12 @@ func (e *emitter) readCBuffer(op *Operand, cs []uint8, t valType) (string, valTy
 // joinScalars reads several scalars as one vector: a swizzle of their vector
 // when they share one, else a constructor of each converted to t.
 func joinScalars(ss []scalar, t valType) (string, valType) {
+	for i, s := range ss {
+		if s.typ == TypeBool { // HLSL can't reinterpret a bool: read it as a mask
+			e := "(" + s.expr + " ? 0xffffffffu : 0u)"
+			ss[i] = scalar{expr: e, base: e, comp: -1, typ: TypeUint}
+		}
+	}
 	same := ss[0].comp >= 0
 	for _, s := range ss[1:] {
 		if s.base != ss[0].base || s.comp < 0 || s.typ != ss[0].typ {

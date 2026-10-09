@@ -61,3 +61,19 @@ func firstDiff(want, got string) string {
 	}
 	return ""
 }
+
+// TestDecompileIsDeterministic decompiles each fixture several times: the
+// output must not depend on Go's map order.
+func TestDecompileIsDeterministic(t *testing.T) {
+	for name, f := range fixtures(t) {
+		first, err := Decompile(f[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		for range 10 {
+			if again, _ := Decompile(f[0]); again != first {
+				t.Fatalf("%s: two decompilations differ\n%s", name, firstDiff(first, again))
+			}
+		}
+	}
+}

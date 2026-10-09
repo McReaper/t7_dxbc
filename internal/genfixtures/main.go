@@ -19,6 +19,9 @@ import (
 func main() {
 	srcs, _ := filepath.Glob(filepath.Join("testdata", "*.hlsl"))
 	for _, src := range srcs {
+		if strings.HasSuffix(src, ".decompiled.hlsl") {
+			continue // a golden decompilation, not a source
+		}
 		if err := gen(src); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

@@ -70,13 +70,20 @@ func (e *emitter) structDecls() {
 		e.line("};")
 		e.line("")
 	}
-	for _, l := range e.cbuffers {
-		for _, v := range l.vars {
-			visit(v.Type)
+	// in the reflection's order: the output must not depend on map order
+	for i := range e.ref.Buffers {
+		for _, l := range e.cbuffers {
+			if l.buf == &e.ref.Buffers[i] {
+				for _, v := range l.vars {
+					visit(v.Type)
+				}
+			}
 		}
 	}
-	for _, t := range e.structs {
-		visit(t)
+	for _, b := range e.ref.Bindings {
+		if t := e.structs[b.Name]; t != nil {
+			visit(t)
+		}
 	}
 }
 

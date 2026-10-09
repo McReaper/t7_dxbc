@@ -22,6 +22,20 @@
 //   int offset;                        // Offset:  676 Size:     4
 //   uint mode;                         // Offset:  680 Size:     4
 //   float gain;                        // Offset:  684 Size:     4
+//   bool mirror;                       // Offset:  688 Size:     4
+//
+// }
+//
+// Resource bind info for flags
+// {
+//
+//   struct Flag
+//   {
+//       
+//       bool on;                       // Offset:    0
+//       float weight;                  // Offset:    4
+//
+//   } $Element;                        // Offset:    0 Size:     8
 //
 // }
 //
@@ -30,6 +44,7 @@
 //
 // Name                                 Type  Format         Dim      HLSL Bind  Count
 // ------------------------------ ---------- ------- ----------- -------------- ------
+// flags                             texture  struct         r/o             t0      1 
 // Scene                             cbuffer      NA          NA            cb0      1 
 //
 //
@@ -57,7 +72,8 @@ dcl_immediateConstantBuffer { { 0.100000, 0, 0, 0},
                               { 0.400000, 0, 0, 0},
                               { 0.200000, 0, 0, 0},
                               { 0.100000, 0, 0, 0} }
-dcl_constantbuffer CB0[43], dynamicIndexed
+dcl_constantbuffer CB0[44], dynamicIndexed
+dcl_resource_structured t0, 8
 dcl_input_ps linear v1.xy
 dcl_input_ps constant v2.xyzw
 dcl_input_ps constant v3.xyzw
@@ -141,7 +157,7 @@ loop
   mad r5.yzw, cb0[r3.z + 1].xxyz, r6.wwww, r5.yyzw
   iadd r3.y, r3.y, l(1)
 endloop 
-and r3.y, v2.x, l(3)
+and r3.yz, v2.xxxx, l(0, 3, 7, 0)
 imul null, r3.y, r3.y, l(3)
 mov r6.xy, v1.xyxx
 mov r6.zw, l(0,0,1.000000,1.000000)
@@ -149,10 +165,10 @@ dp4 r7.x, cb0[r3.y + 18].xyzw, r6.xyww
 dp4 r7.y, cb0[r3.y + 19].xyzw, r6.xyww
 dp4 r7.z, cb0[r3.y + 20].xyzw, r6.xyzw
 ishl r3.y, r3.w, l(2)
-mul r3.z, r7.y, cb0[r3.y + 31].w
-mad r3.z, cb0[r3.y + 30].w, r7.x, r3.z
-mad r3.z, cb0[r3.y + 32].w, r7.z, r3.z
-add r6.w, r3.z, cb0[r3.y + 33].w
+mul r3.w, r7.y, cb0[r3.y + 31].w
+mad r3.w, cb0[r3.y + 30].w, r7.x, r3.w
+mad r3.w, cb0[r3.y + 32].w, r7.z, r3.w
+add r6.w, r3.w, cb0[r3.y + 33].w
 add r6.xyz, r5.yzwy, r7.xyzx
 switch cb0[42].z
   case l(0)
@@ -186,6 +202,10 @@ utof r1.y, r2.z
 itof r1.xz, r2.yywy
 mov r1.w, l(0)
 mad r1.xyzw, r1.xyzw, l(0.000010, 0.000010, 0.000010, 0.000010), r4.xyzw
-add o0.xyzw, r0.xyzw, r1.xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+ld_structured_indexable(structured_buffer, stride=8)(mixed,mixed,mixed,mixed) r1.xy, r3.z, l(0), t0.xyxx
+movc r0.xy, cb0[43].xxxx, r0.yxyy, r0.xyxx
+mul r2.xyzw, r1.yyyy, r0.xyzw
+movc o0.xyzw, r1.xxxx, r2.xyzw, r0.xyzw
 ret 
-// Approximately 124 instruction slots used
+// Approximately 128 instruction slots used

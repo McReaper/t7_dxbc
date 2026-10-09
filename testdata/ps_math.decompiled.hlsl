@@ -8,6 +8,12 @@ struct Light
   uint flags;
 };
 
+struct Flag
+{
+  bool on;
+  float weight;
+};
+
 cbuffer Scene : register(b0)
 {
   Light lights[6] : packoffset(c0);
@@ -17,8 +23,10 @@ cbuffer Scene : register(b0)
   int offset : packoffset(c42.y);
   uint mode : packoffset(c42.z);
   float gain : packoffset(c42.w);
+  bool mirror : packoffset(c43);
 }
 
+StructuredBuffer<Flag> flags : register(t0);
 static const uint4 icb[5] = { uint4(0x3dcccccd, 0x00000000, 0x00000000, 0x00000000), uint4(0x3e4ccccd, 0x00000000, 0x00000000, 0x00000000), uint4(0x3ecccccd, 0x00000000, 0x00000000, 0x00000000), uint4(0x3e4ccccd, 0x00000000, 0x00000000, 0x00000000), uint4(0x3dcccccd, 0x00000000, 0x00000000, 0x00000000) };
 
 uint dxbc_bfi(uint w, uint o, uint i, uint b) { w &= 31; o &= 31; uint m = ((1u << w) - 1) << o; return ((i << o) & m) | (b & ~m); }
@@ -118,7 +126,7 @@ void main(float4 in_SV_Position0 : SV_Position0,
     r5.yzw = mad((lights[i3.z / 3u].color.xyz), asfloat(i6.www), r5.yzw);
     i3.y = asuint(asint(i3.y) + 1);
   }
-  i3.y = in_TEXCOORD1.x & 3u;
+  i3.yz = in_TEXCOORD1.xx & (uint2(3u, 7u));
   i3.y = asuint(asint(i3.y) * 3);
   r6.xy = in_TEXCOORD0.xy;
   {
@@ -130,10 +138,10 @@ void main(float4 in_SV_Position0 : SV_Position0,
   r7.y = dot(float4(bones[i3.y / 3u]._m10, bones[i3.y / 3u]._m11, bones[i3.y / 3u]._m12, bones[i3.y / 3u]._m13), float4(r6.x, r6.y, asfloat(i6.w), asfloat(i6.w)));
   r7.z = dot(float4(bones[i3.y / 3u]._m20, bones[i3.y / 3u]._m21, bones[i3.y / 3u]._m22, bones[i3.y / 3u]._m23), float4(r6.x, r6.y, r6.z, asfloat(i6.w)));
   i3.y = asuint(asint(i3.w) << 2);
-  i3.z = asuint(r7.y * (frames[i3.y / 4u]._m31));
-  i3.z = asuint(mad((frames[i3.y / 4u]._m30), r7.x, asfloat(i3.z)));
-  i3.z = asuint(mad((frames[i3.y / 4u]._m32), r7.z, asfloat(i3.z)));
-  i6.w = asuint(asfloat(i3.z) + (frames[i3.y / 4u]._m33));
+  i3.w = asuint(r7.y * (frames[i3.y / 4u]._m31));
+  i3.w = asuint(mad((frames[i3.y / 4u]._m30), r7.x, asfloat(i3.w)));
+  i3.w = asuint(mad((frames[i3.y / 4u]._m32), r7.z, asfloat(i3.w)));
+  i6.w = asuint(asfloat(i3.w) + (frames[i3.y / 4u]._m33));
   r6.xyz = r5.yzw + r7.xyz;
   switch (asint(mode)) {
     case 0:
@@ -167,6 +175,10 @@ void main(float4 in_SV_Position0 : SV_Position0,
   i1.xz = asuint(float2(asint(i2.yw)));
   i1.w = asuint(0);
   i1.xyzw = asuint(mad(asfloat(i1.xyzw), (float4(1e-05, 1e-05, 1e-05, 1e-05)), r4.xyzw));
-  out_SV_Target0.xyzw = asfloat(i0.xyzw) + asfloat(i1.xyzw);
+  i0.xyzw = asuint(asfloat(i0.xyzw) + asfloat(i1.xyzw));
+  i1.xy = uint2((flags[i3.z].on ? 0xffffffffu : 0u), asuint(flags[i3.z].weight));
+  i0.xy = (uint2((mirror ? 0xffffffffu : 0u), (mirror ? 0xffffffffu : 0u))) ? i0.yx : i0.xy;
+  i2.xyzw = asuint(asfloat(i1.yyyy) * asfloat(i0.xyzw));
+  out_SV_Target0.xyzw = asfloat(i1.xxxx ? i2.xyzw : i0.xyzw);
   return;
 }

@@ -3,7 +3,8 @@
 // division and remainder, products), half-float packing, sine and cosine of
 // one value, rounding, a local array indexed at run time, a constant table,
 // constant-buffer arrays of structs and matrices indexed at run time, a switch
-// whose cases share code, and a loop that continues.
+// whose cases share code, a loop that continues, and bools in a constant
+// buffer and a structured buffer.
 struct Light
 {
 	float3 position;
@@ -21,7 +22,16 @@ cbuffer Scene : register(b0)
 	int offset;
 	uint mode;
 	float gain;
+	bool mirror;
 };
+
+struct Flag
+{
+	bool on;
+	float weight;
+};
+
+StructuredBuffer<Flag> flags : register(t0);
 
 static const float weights[5] = { 0.1, 0.2, 0.4, 0.2, 0.1 };
 
@@ -84,5 +94,8 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0, nointerpolation uin
 	}
 	o += float4(field, sfield, merged, hi + lo) * 1e-3 + float4(shi, rev, q, r) * 1e-4;
 	o += float4(prod, mx, imx, 0) * 1e-5 + float4(unpacked, picked, rounded);
-	return o;
+	Flag f = flags[bits.x & 7];
+	if (mirror)
+		o.xy = o.yx;
+	return f.on ? o * f.weight : o;
 }
