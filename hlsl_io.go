@@ -75,6 +75,9 @@ func (e *emitter) entry() {
 	if e.p.Stage == StageCompute {
 		e.line("[numthreads(%d, %d, %d)]", e.group[0], e.group[1], e.group[2])
 	}
+	if e.p.Stage == StagePixel && e.global&GlobalForceEarlyDepthStencil != 0 {
+		e.line("[earlydepthstencil]")
+	}
 	var inModes, outModes map[uint32]string
 	switch e.p.Stage {
 	case StagePixel:

@@ -2,10 +2,11 @@
 // Per-sample shading: a multisampled texture of unknown sample count, sample
 // positions of a texture and of the render target, attributes evaluated at
 // the centroid, at a sample and snapped to an offset, and signed atomics on
-// a UAV from a pixel shader.
+// a UAV from a pixel shader, whose depth test runs before it.
 Texture2DMS<float4> ms : register(t0);
 RWStructuredBuffer<int> extremes : register(u1);
 
+[earlydepthstencil]
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0, float3 normal : NORMAL, uint s : SV_SampleIndex) : SV_Target
 {
 	uint w, h, count;

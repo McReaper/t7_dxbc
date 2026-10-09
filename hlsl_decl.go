@@ -125,6 +125,9 @@ func elementType(b *Binding) string {
 
 func (e *emitter) resourceDecl(b *Binding) {
 	name, reg := identifier(b.Name), b.Register()
+	if b.Input.IsUAV() && e.uavFlags[b.Point]&UAVGloballyCoherent != 0 {
+		e.sb.WriteString("globallycoherent ")
+	}
 	switch b.Input {
 	case InputSampler:
 		kind := "SamplerState"

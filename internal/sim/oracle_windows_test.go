@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/McReaper/dxbc"
-	"github.com/McReaper/dxbc/internal/d3dc"
+	"github.com/McReaper/dxbc/internal/oracle"
 )
 
 // runs is how many random inputs each shader is checked on.
@@ -56,26 +56,20 @@ func readShader(code []byte) (*shader, error) {
 	return &shader{p, ref, in, out, m}, nil
 }
 
-var targets = map[dxbc.Stage]string{dxbc.StagePixel: "ps", dxbc.StageVertex: "vs", dxbc.StageCompute: "cs",
-	dxbc.StageGeometry: "gs"}
-
-// recompile decompiles a shader and compiles the result again.
-func recompile(code []byte) (orig, again *shader, src string, err error) {
+// recompile decompiles a shader and compiles the result again, through the
+// interface oracle.
+func recompile(code []byte) (orig, again *shader, src string, diffs []string, err error) {
 	if orig, err = readShader(code); err != nil {
-		return nil, nil, "", fmt.Errorf("read: %w", err)
+		return nil, nil, "", nil, fmt.Errorf("read: %w", err)
 	}
-	if src, err = dxbc.Decompile(code); err != nil {
-		return orig, nil, src, fmt.Errorf("decompile: %w", err)
-	}
-	target := fmt.Sprintf("%s_%d_%d", targets[orig.p.Stage], orig.p.Major, orig.p.Minor)
-	out, err := d3dc.Compile([]byte(src), "decompiled.hlsl", "main", target)
+	src, out, err := oracle.Recompile(code)
 	if err != nil {
-		return orig, nil, src, fmt.Errorf("compile: %w", err)
+		return orig, nil, src, nil, err
 	}
 	if again, err = readShader(out); err != nil {
-		return orig, nil, src, fmt.Errorf("read recompiled: %w", err)
+		return orig, nil, src, nil, fmt.Errorf("read recompiled: %w", err)
 	}
-	return orig, again, src, nil
+	return orig, again, src, oracle.Diffs(code, out), nil
 }
 
 // near compares two results' dwords: floats (normal, or zero) within a
@@ -227,7 +221,7 @@ func agreement(orig, again *shader) (failed int, first string, err error) {
 }
 
 func TestFixturesAgree(t *testing.T) {
-	if !d3dc.Available() {
+	if !oracle.Available() {
 		t.Skip("d3dcompiler_47.dll not found")
 	}
 	paths, _ := filepath.Glob(filepath.Join("..", "..", "testdata", "*.dxbc"))
@@ -235,23 +229,33 @@ func TestFixturesAgree(t *testing.T) {
 		t.Fatal("no fixtures")
 	}
 	for _, p := range paths {
-		t.Run(filepath.Base(p), func(t *testing.T) {
-			code, err := os.ReadFile(p)
-			if err != nil {
-				t.Fatal(err)
-			}
-			orig, again, src, err := recompile(code)
-			if err != nil {
-				t.Fatalf("%v\n%s", err, src)
-			}
-			failed, first, err := agreement(orig, again)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if failed > 0 {
-				t.Errorf("%d of %d runs differ; %s\n%s", failed, runs, first, src)
-			}
-		})
+		t.Run(filepath.Base(p), func(t *testing.T) { checkFixture(t, p) })
+	}
+}
+
+// checkFixture holds one shader to both oracles: the same interface, the
+// same results.
+func checkFixture(t *testing.T, path string) {
+	code, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig, again, src, diffs, err := recompile(code)
+	if err != nil {
+		t.Fatalf("%v\n%s", err, src)
+	}
+	for _, d := range diffs {
+		t.Errorf("interface differs: %s", d)
+	}
+	failed, first, err := agreement(orig, again)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failed > 0 {
+		t.Errorf("%d of %d runs differ; %s", failed, runs, first)
+	}
+	if t.Failed() {
+		t.Logf("decompiled:\n%s", src)
 	}
 }
 
@@ -262,7 +266,7 @@ func TestFixturesAgree(t *testing.T) {
 // already holds: a run over a whole cache takes hours.
 func TestCorpusAgrees(t *testing.T) {
 	dir := os.Getenv("DXBC_CORPUS")
-	if dir == "" || !d3dc.Available() {
+	if dir == "" || !oracle.Available() {
 		t.Skip("set DXBC_CORPUS to a directory of compiled shaders")
 	}
 	j, err := openJournal(os.Getenv("DXBC_JOURNAL"))
@@ -374,7 +378,7 @@ func checkOne(path string) (kind, detail string) {
 	if err != nil || len(code) < 4 || string(code[:4]) != "DXBC" {
 		return "not a shader", ""
 	}
-	orig, again, _, err := recompile(code)
+	orig, again, _, diffs, err := recompile(code)
 	if err != nil {
 		msg, _, _ := strings.Cut(err.Error(), "\n")
 		k, _, _ := strings.Cut(msg, ":")
@@ -387,12 +391,17 @@ func checkOne(path string) (kind, detail string) {
 	case err != nil:
 		msg := err.Error()
 		return "not simulated", msg[:min(len(msg), 200)]
-	case failed == 0:
-		return "agrees", ""
 	case failed == runs:
 		return "differs on every run", first[:min(len(first), 300)]
+	case failed > 0:
+		return "differs on some runs", first[:min(len(first), 300)]
+	case len(diffs) > 0:
+		kind, _, _ := strings.Cut(diffs[0], "\n")
+		name, how, _ := strings.Cut(kind, ": ")
+		how, _, _ = strings.Cut(how, ":")
+		return "interface: " + name + ": " + how, kind[:min(len(kind), 300)]
 	}
-	return "differs on some runs", first[:min(len(first), 300)]
+	return "agrees", ""
 }
 
 func corpusPaths(t *testing.T, dir string) []string {
@@ -433,19 +442,5 @@ func TestAgreeOne(t *testing.T) {
 	if p == "" {
 		t.Skip("set DXBC_ONE to a compiled shader")
 	}
-	code, err := os.ReadFile(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	orig, again, src, err := recompile(code)
-	if err != nil {
-		t.Fatalf("%v\n%s", err, src)
-	}
-	failed, first, err := agreement(orig, again)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if failed > 0 {
-		t.Errorf("%d of %d runs differ; %s\n%s", failed, runs, first, src)
-	}
+	checkFixture(t, p)
 }

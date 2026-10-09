@@ -80,3 +80,31 @@ func (in *Instruction) ResourceDimension() uint32 { return in.Token >> 11 & 0x1F
 // Primitive is a geometry shader's input primitive or output topology
 // declaration's value.
 func (in *Instruction) Primitive() uint32 { return in.Token >> 11 & 0x3F }
+
+// Global flags (D3D10_SB_GLOBAL_FLAGS), in the order the disassembler names
+// them.
+const (
+	GlobalRefactoringAllowed = 1 << iota
+	GlobalDoublePrecision
+	GlobalForceEarlyDepthStencil
+	GlobalRawAndStructuredBuffers
+	GlobalSkipOptimization
+	GlobalMinimumPrecision
+	Global11_1DoubleExtensions
+	Global11_1ShaderExtensions
+)
+
+// GlobalFlags are a dcl_globalFlags declaration's.
+func (in *Instruction) GlobalFlags() uint32 { return in.Token >> 11 }
+
+// UAV declaration flags.
+const (
+	UAVGloballyCoherent    = 1 << 16 // _glc
+	UAVRasterizerOrdered   = 1 << 17 // _rov
+	UAVOrderPreservingCntr = 1 << 23 // _opc
+)
+
+// UAVFlags are a UAV declaration's flags, at their bits in the opcode token.
+func (in *Instruction) UAVFlags() uint32 {
+	return in.Token & (UAVGloballyCoherent | UAVRasterizerOrdered | UAVOrderPreservingCntr)
+}

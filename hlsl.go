@@ -72,6 +72,8 @@ type emitter struct {
 	intX     map[uint32]bool   // x# -> an array of uint4
 	dry      bool              // finding the banks: write nothing
 	gs       geometry
+	uavFlags map[uint32]uint32 // u# -> its declaration's flags
+	global   uint32            // the global flags
 
 	generated      map[string]string // helpers written for this shader, by name
 	generatedOrder []string
@@ -81,7 +83,7 @@ type emitter struct {
 func newEmitter(p *Program, ref *Reflection, in, out []Element) *emitter {
 	e := &emitter{p: p, ref: ref, in: in, out: out, cbuffers: map[uint32]*cbufferLayout{},
 		structs: map[string]*Type{}, idxTemps: map[uint32][2]uint32{}, tgsm: map[uint32][2]uint32{},
-		inMods: map[uint32]string{}, helpers: map[string]bool{}, unknown: map[string]bool{},
+		inMods: map[uint32]string{}, helpers: map[string]bool{}, unknown: map[string]bool{}, uavFlags: map[uint32]uint32{},
 		intRegs: map[uint32]uint8{}, intX: map[uint32]bool{}, generated: map[string]string{}}
 	buffers := map[string]*Buffer{}
 	for i := range ref.Buffers {
@@ -284,9 +286,19 @@ var declarations = map[Opcode]func(e *emitter, in *Instruction){
 			copy(e.group[:], in.Payload)
 		}
 	},
-	OpDclInputPs:    declareInputPs,
-	OpDclInputPsSiv: declareInputPs,
-	OpDclInputPsSgv: declareInputPs,
+	OpDclInputPs:                       declareInputPs,
+	OpDclGlobalFlags:                   func(e *emitter, in *Instruction) { e.global = in.GlobalFlags() },
+	OpDclUnorderedAccessViewTyped:      declareUAV,
+	OpDclUnorderedAccessViewRaw:        declareUAV,
+	OpDclUnorderedAccessViewStructured: declareUAV,
+	OpDclInputPsSiv:                    declareInputPs,
+	OpDclInputPsSgv:                    declareInputPs,
+}
+
+func declareUAV(e *emitter, in *Instruction) {
+	if u, ok := operandRegister(in); ok {
+		e.uavFlags[u] = in.UAVFlags()
+	}
 }
 
 func declareInputPs(e *emitter, in *Instruction) {

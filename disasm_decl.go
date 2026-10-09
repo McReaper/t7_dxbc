@@ -72,10 +72,10 @@ func init() {
 func uavFlags(in *Instruction) string {
 	var s string
 	for _, f := range []struct {
-		bit  uint
+		bit  uint32
 		name string
-	}{{16, "_glc"}, {17, "_rov"}, {23, "_opc"}} {
-		if in.Token>>f.bit&1 != 0 {
+	}{{UAVGloballyCoherent, "_glc"}, {UAVRasterizerOrdered, "_rov"}, {UAVOrderPreservingCntr, "_opc"}} {
+		if in.UAVFlags()&f.bit != 0 {
 			s += f.name
 		}
 	}
@@ -114,7 +114,7 @@ var globalFlagNames = []string{"refactoringAllowed", "enableDoublePrecisionFloat
 
 func disasmGlobalFlags(in *Instruction) string {
 	var names []string
-	flags := in.Token >> 11
+	flags := in.GlobalFlags()
 	for i, n := range globalFlagNames {
 		if flags&(1<<i) != 0 {
 			names = append(names, n)

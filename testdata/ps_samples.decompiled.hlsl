@@ -3,6 +3,7 @@
 Texture2DMS<float4> ms : register(t0);
 RWStructuredBuffer<int> extremes : register(u1);
 
+[earlydepthstencil]
 void main(noperspective float4 in_SV_Position0 : SV_Position0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   float3 in_NORMAL0 : NORMAL0,
