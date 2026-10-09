@@ -18,7 +18,7 @@ void main(uint3 vThreadGroupID : SV_GroupID,
     g0[(0u >> 2) + 0] = 0u;
   }
   GroupMemoryBarrierWithGroupSync();
-  i0.xy = asuint(asint(vThreadIDInGroupFlattened) + (int2(1, 3)));
+  i0.xy = asuint(asint(vThreadIDInGroupFlattened.xx) + (int2(1, 3)));
   {
     uint dxbc_before;
     InterlockedAdd(g0[0u >> 2], i0.x, dxbc_before);

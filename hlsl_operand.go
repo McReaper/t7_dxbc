@@ -145,9 +145,11 @@ func (e *emitter) readRaw(op *Operand, cs []uint8, t valType) (string, valType) 
 		return fmt.Sprintf("icb[%s]%s", e.indexExpr(op.Index[0]), sw), tUint
 	}
 	if st, ok := systemInputs[op.Type]; ok {
-		if st[0] == "uint" {
+		if st[0] == "uint" && len(cs) == 1 {
 			return operandPrefixes[op.Type], tUint
 		}
+		// a scalar's swizzle is all x: .xx widens it, which a constructor
+		// of one scalar can't
 		return operandPrefixes[op.Type] + sw, tUint
 	}
 	if _, ok := systemOutputs[op.Type]; ok {

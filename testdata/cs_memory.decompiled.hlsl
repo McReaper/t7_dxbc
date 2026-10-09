@@ -76,7 +76,7 @@ void main(uint3 vThreadID : SV_DispatchThreadID,
   g1[vThreadIDInGroupFlattened][0] = i1.x;
   g1[vThreadIDInGroupFlattened][1] = i1.y;
   GroupMemoryBarrierWithGroupSync();
-  i0.xy = asuint(asint(vThreadIDInGroupFlattened) + (int2(1, 3)));
+  i0.xy = asuint(asint(vThreadIDInGroupFlattened.xx) + (int2(1, 3)));
   i0.xy = i0.xy & (uint2(31u, 31u));
   i0.x = g0[i0.x][0];
   i0.w = asuint(asint(vThreadIDInGroupFlattened) + asint(pick));
@@ -85,7 +85,7 @@ void main(uint3 vThreadID : SV_DispatchThreadID,
   i2.w = asuint(asint(i0.w) + 8);
   i1.xy = uint2(g1[i1.x][0], g1[i1.x][1]);
   i2.z = asuint(0);
-  i2.xy = vThreadIDInGroupFlattened & (uint2(7u, 3u));
+  i2.xy = vThreadIDInGroupFlattened.xx & (uint2(7u, 3u));
   InterlockedAdd(g0[i2.x][i2.z >> 2], i0.x);
   i0.z = asuint(0);
   {
@@ -114,7 +114,7 @@ void main(uint3 vThreadID : SV_DispatchThreadID,
   i0.w = i0.x ^ i3.x;
   bins[i2.y].weight = asfloat(i0.y);
   dxbc_store_bins(i2.y, i2.w, i0.w);
-  i1.xzw = asuint(asint(vThreadIDInGroupFlattened) << (int3(2, 4, 3)));
+  i1.xzw = asuint(asint(vThreadIDInGroupFlattened.xxx) << (int3(2, 4, 3)));
   raw.InterlockedAdd(i1.x, i0.x);
   i0.x = i0.x | 240u;
   InterlockedAnd(counts[vThreadID.xy], i0.x);
@@ -157,7 +157,7 @@ void main(uint3 vThreadID : SV_DispatchThreadID,
     i2.yzw = dxbc_dims.xyz;
   }
   i3.xy = vThreadID.xy % i2.yz;
-  i3.zw = vThreadIDInGroupFlattened % i2.ww;
+  i3.zw = vThreadIDInGroupFlattened.xx % i2.ww;
   layers[i3.xyz] = asfloat(i0.xyzw);
   i0.x = pairs.IncrementCounter();
   i0.x = i0.x % i1.z;

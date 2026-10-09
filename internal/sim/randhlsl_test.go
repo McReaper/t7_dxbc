@@ -46,9 +46,10 @@ void main(float4 inF : TEXCOORD0, nointerpolation uint4 inU : TEXCOORD1, nointer
 }
 
 type shaderGen struct {
-	r      *rand.Rand
-	out    *strings.Builder
-	locals map[string]int
+	r       *rand.Rand
+	out     *strings.Builder
+	locals  map[string]int
+	compute bool // a compute shader: buffers and group memory instead of textures
 }
 
 const (
@@ -114,6 +115,9 @@ func (g *shaderGen) leaf(kind, n int) string {
 		}
 		return fmt.Sprintf("iv[%s].%s", idx, sw)
 	case 3:
+		if g.compute {
+			return g.memoryLeaf(kind, n)
+		}
 		if kind == kFloat {
 			return fmt.Sprintf("tex.SampleLevel(smp, inF.%s, %d).%s", g.swizzle(2), g.r.IntN(3), sw)
 		}
@@ -225,7 +229,9 @@ func (g *shaderGen) uintExpr(n, depth int, a func() string) string {
 	case 10:
 		return fmt.Sprintf("%s(clamp(%s, 0, 1000))", vec(kUint, n), g.expr(kFloat, n, depth-1))
 	case 11:
-		return fmt.Sprintf("asuint(%s)", g.expr(kFloat, n, depth-1))
+		// rounded first: the compiler may reorder a float's arithmetic by an
+		// ulp, which a float's bits would carry into integer arithmetic
+		return fmt.Sprintf("asuint(round(%s * 8))", g.expr(kFloat, n, depth-1))
 	case 12:
 		return fmt.Sprintf("(%s ? %s : %s)", g.condition(n, depth-1), a(), a())
 	}
@@ -264,9 +270,14 @@ func (g *shaderGen) condition(n, depth int) string {
 	return fmt.Sprintf("(%s %s %s)", g.expr(kind, n, depth), g.pick("<", "<=", ">", ">=", "==", "!="), g.expr(kind, n, depth))
 }
 
-// statement writes an assignment, a branch, a loop or a switch.
+// statement writes an assignment, a branch, a loop or a switch, and in a
+// compute shader also a memory access.
 func (g *shaderGen) statement(depth int) {
 	ind := strings.Repeat("\t", depth)
+	if g.compute && g.r.IntN(3) == 0 {
+		g.memoryStatement(ind, depth)
+		return
+	}
 	switch k := g.r.IntN(8); {
 	case k < 5 || depth > 2:
 		kind := g.r.IntN(3)
