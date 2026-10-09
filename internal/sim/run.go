@@ -42,7 +42,17 @@ type Result struct {
 	System    map[dxbc.OperandType]uint32 // oDepth, oMask…
 	Discarded bool
 	Steps     int
+	// Emitted are the vertices a geometry shader appended, its outputs when
+	// it emitted each; a nil one is a cut, the end of a strip
+	Emitted []map[uint32]Value
 }
+
+// VertexInput is the key of a geometry shader's input register for one of
+// its primitive's vertices, v[vertex][reg].
+func VertexInput(vertex, reg uint32) uint32 { return vertex<<16 | reg }
+
+// InputVertices is how many vertices a geometry shader's primitive has.
+func (m *Machine) InputVertices() int { return m.vertices }
 
 // thread is one invocation's state.
 type thread struct {
@@ -229,4 +239,25 @@ func switchTo(t *thread, in *dxbc.Instruction, pc int) int {
 		}
 	}
 	return target + 1
+}
+
+func emit(t *thread, in *dxbc.Instruction) error {
+	if in.Op != dxbc.OpCut && in.Op != dxbc.OpCutStream {
+		v := make(map[uint32]Value, len(t.res.Outputs))
+		for k, o := range t.res.Outputs {
+			v[k] = o
+		}
+		t.res.Emitted = append(t.res.Emitted, v)
+	}
+	if in.Op != dxbc.OpEmit && in.Op != dxbc.OpEmitStream {
+		t.res.Emitted = append(t.res.Emitted, nil)
+	}
+	return nil
+}
+
+func init() {
+	for _, op := range []dxbc.Opcode{dxbc.OpEmit, dxbc.OpEmitStream, dxbc.OpCut, dxbc.OpCutStream, dxbc.OpEmitthencut,
+		dxbc.OpEmitthencutStream} {
+		ops[op] = emit
+	}
 }

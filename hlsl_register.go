@@ -127,11 +127,15 @@ func componentValType(t ComponentType) valType {
 // readInput reads an input register's components from the parameters they
 // arrived in.
 func (e *emitter) readInput(op *Operand, cs []uint8, t valType) (string, valType) {
-	if len(op.Index) != 1 || op.Index[0].Relative != nil {
+	at, vertex := op.Index, ""
+	if e.p.Stage == StageGeometry && len(at) == 2 {
+		vertex, at = e.indexExpr(at[0]), at[1:] // v[vertex][register]
+	}
+	if len(at) != 1 || at[0].Relative != nil {
 		e.unknown["indexed input"] = true
 		return "0", t
 	}
-	reg := uint32(op.Index[0].Imm)
+	reg := uint32(at[0].Imm)
 	type part struct {
 		name   string
 		letter byte
@@ -144,7 +148,7 @@ func (e *emitter) readInput(op *Operand, cs []uint8, t valType) (string, valType
 			e.unknown[fmt.Sprintf("v%d.%c outside the input signature", reg, components[c])] = true
 			return "0", t
 		}
-		name, pt := paramName("in", el), componentValType(el.Type)
+		name, pt := e.inputName(el, vertex), componentValType(el.Type)
 		if strings.EqualFold(el.Name, "SV_IsFrontFace") {
 			name, pt = "("+name+" ? 0xffffffffu : 0u)", tUint
 		}
@@ -198,7 +202,7 @@ func (e *emitter) writeOutput(dst *Operand, expr string, t valType) {
 			e.unknown[fmt.Sprintf("o%d.%c outside the output signature", reg, components[c])] = true
 			return
 		}
-		name := paramName("out", el)
+		name := e.outputName(el)
 		if n := len(parts); n > 0 && strings.HasPrefix(parts[n-1].target, name+".") {
 			parts[n-1].target += string(letter)
 			parts[n-1].part |= 1 << c

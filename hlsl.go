@@ -42,8 +42,10 @@ func Decompile(b []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p.Stage != StagePixel && p.Stage != StageVertex && p.Stage != StageCompute {
-		return "", fmt.Errorf("stage %d: only pixel, vertex and compute shaders are decompiled", p.Stage)
+	switch p.Stage {
+	case StagePixel, StageVertex, StageCompute, StageGeometry:
+	default:
+		return "", fmt.Errorf("stage %d: hull and domain shaders aren't decompiled", p.Stage)
 	}
 	e := newEmitter(p, ref, in, out)
 	return e.emit()
@@ -69,6 +71,7 @@ type emitter struct {
 	intRegs  map[uint32]uint8  // r# -> the components that hold integers, in i#
 	intX     map[uint32]bool   // x# -> an array of uint4
 	dry      bool              // finding the banks: write nothing
+	gs       geometry
 
 	generated      map[string]string // helpers written for this shader, by name
 	generatedOrder []string
@@ -118,6 +121,11 @@ func (e *emitter) emit() (string, error) {
 	}
 	if err := e.checkLimits(); err != nil {
 		return "", err
+	}
+	if e.p.Stage == StageGeometry {
+		if err := e.checkGeometry(); err != nil {
+			return "", err
+		}
 	}
 	e.findBanks(body)
 	e.declarations()

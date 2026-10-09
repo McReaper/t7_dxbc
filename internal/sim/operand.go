@@ -45,6 +45,9 @@ func (t *thread) load(op *dxbc.Operand) Value {
 			return t.r[i]
 		}
 	case dxbc.OperandInput:
+		if len(op.Index) == 2 { // a geometry shader's v[vertex][register]
+			return t.in[VertexInput(uint32(t.index(op, 0)), uint32(t.index(op, 1)))]
+		}
 		return t.in[uint32(t.index(op, 0))]
 	case dxbc.OperandIndexableTemp:
 		arr := t.x[uint32(t.index(op, 0))]

@@ -18,7 +18,7 @@ import (
 )
 
 // stageTargets are the compile targets' prefixes by stage.
-var stageTargets = map[Stage]string{StagePixel: "ps", StageVertex: "vs", StageCompute: "cs"}
+var stageTargets = map[Stage]string{StagePixel: "ps", StageVertex: "vs", StageCompute: "cs", StageGeometry: "gs"}
 
 // recompile decompiles a shader and compiles the HLSL back with Microsoft's
 // compiler, for the same target.

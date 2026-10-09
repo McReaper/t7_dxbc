@@ -40,17 +40,18 @@ type view struct {
 
 // Machine is a program ready to run: its body and the declarations it reads.
 type Machine struct {
-	p       *dxbc.Program
-	body    []dxbc.Instruction
-	flow    flow
-	temps   int
-	idx     map[uint32]uint32    // x# -> elements
-	tgsm    map[uint32][2]uint32 // g# -> stride (0: raw), dwords
-	strides map[view]uint32      // a structured t# or u# -> its stride
-	icb     []uint32
-	group   [3]uint32
-	binds   map[view]*dxbc.Binding
-	elems   map[view]*dxbc.Type // a structured view -> its element type
+	p        *dxbc.Program
+	body     []dxbc.Instruction
+	flow     flow
+	temps    int
+	idx      map[uint32]uint32    // x# -> elements
+	tgsm     map[uint32][2]uint32 // g# -> stride (0: raw), dwords
+	strides  map[view]uint32      // a structured t# or u# -> its stride
+	icb      []uint32
+	group    [3]uint32
+	binds    map[view]*dxbc.Binding
+	elems    map[view]*dxbc.Type // a structured view -> its element type
+	vertices int                 // a geometry shader's input vertices
 }
 
 // New reads a program's declarations.
@@ -133,6 +134,10 @@ func (m *Machine) declare(in *dxbc.Instruction) {
 		m.strides[view{dxbc.OperandUAV, reg()}] = pay(0)
 	case dxbc.OpDclThreadGroup:
 		m.group = [3]uint32{pay(0), pay(1), pay(2)}
+	case dxbc.OpDclInput, dxbc.OpDclInputSiv, dxbc.OpDclInputSgv:
+		if len(in.Operands) > 0 && len(in.Operands[0].Index) == 2 {
+			m.vertices = int(in.Operands[0].Index[0].Imm)
+		}
 	}
 }
 

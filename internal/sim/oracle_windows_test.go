@@ -56,7 +56,8 @@ func readShader(code []byte) (*shader, error) {
 	return &shader{p, ref, in, out, m}, nil
 }
 
-var targets = map[dxbc.Stage]string{dxbc.StagePixel: "ps", dxbc.StageVertex: "vs", dxbc.StageCompute: "cs"}
+var targets = map[dxbc.Stage]string{dxbc.StagePixel: "ps", dxbc.StageVertex: "vs", dxbc.StageCompute: "cs",
+	dxbc.StageGeometry: "gs"}
 
 // recompile decompiles a shader and compiles the result again.
 func recompile(code []byte) (orig, again *shader, src string, err error) {
@@ -109,20 +110,23 @@ func (s *shader) run(seed uint32) (outcome, error) {
 			return o, err
 		}
 	} else {
-		r, err := s.m.Run(w, Inputs(s.in, seed), nil)
+		sys := map[dxbc.OperandType]Value{
+			dxbc.OperandPrimitiveID:   {3 + seed%7},
+			dxbc.OperandGSInstanceID:  {seed % 2},
+			dxbc.OperandInputCoverage: {0xF ^ seed%4},
+		}
+		r, err := s.m.Run(w, s.inputs(seed), sys)
 		if err != nil {
 			return o, err
 		}
 		o.discarded = r.Discarded
-		for _, el := range s.out {
-			if el.Register == dxbc.NoRegister {
+		s.outputs(o.values, "", r.Outputs)
+		for i, v := range r.Emitted {
+			if v == nil {
+				o.values[fmt.Sprintf("vertex %d: cut", i)] = 1
 				continue
 			}
-			for c := range 4 {
-				if el.Mask&(1<<c) != 0 {
-					o.values[fmt.Sprintf("%s%d.%c", el.Name, el.Index, "xyzw"[c])] = r.Outputs[el.Register][c]
-				}
-			}
+			s.outputs(o.values, fmt.Sprintf("vertex %d: ", i), v)
 		}
 		for t, v := range r.System {
 			o.values[fmt.Sprintf("system %d", t)] = v
@@ -132,6 +136,37 @@ func (s *shader) run(seed uint32) (outcome, error) {
 		o.values[fmt.Sprintf("u%d[%d,%d,%d].%d", c.Reg, c.A, c.B, c.C, c.Comp)] = v
 	}
 	return o, nil
+}
+
+// inputs are an invocation's inputs: for a geometry shader, each of its
+// primitive's vertices.
+func (s *shader) inputs(seed uint32) map[uint32]Value {
+	n := s.m.InputVertices()
+	if s.p.Stage != dxbc.StageGeometry || n == 0 {
+		return Inputs(s.in, seed)
+	}
+	in := map[uint32]Value{}
+	for v := range uint32(n) {
+		for reg, val := range Inputs(s.in, seed*31+v) {
+			in[VertexInput(v, reg)] = val
+		}
+	}
+	return in
+}
+
+// outputs names an invocation's output registers by the signature elements
+// they hold.
+func (s *shader) outputs(values map[string]uint32, prefix string, out map[uint32]Value) {
+	for _, el := range s.out {
+		if el.Register == dxbc.NoRegister {
+			continue
+		}
+		for c := range 4 {
+			if el.Mask&(1<<c) != 0 {
+				values[fmt.Sprintf("%s%s%d.%c", prefix, el.Name, el.Index, "xyzw"[c])] = out[el.Register][c]
+			}
+		}
+	}
 }
 
 // differences compares two runs and names the first values that differ.

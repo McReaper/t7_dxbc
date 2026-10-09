@@ -21,9 +21,14 @@ var systemOutputs = map[OperandType][2]string{
 	39: {"float", "SV_DepthLessEqual"}, 41: {"uint", "SV_StencilRef"},
 }
 
-// signatureStructs is a placeholder for stages whose interface is a struct;
-// pixel, vertex and compute shaders take their parameters directly.
-func (e *emitter) signatureStructs() {}
+// signatureStructs writes the structs a stage's interface is made of: a
+// geometry shader's vertices. Pixel, vertex and compute shaders take their
+// parameters directly.
+func (e *emitter) signatureStructs() {
+	if e.p.Stage == StageGeometry {
+		e.vertexStructs()
+	}
+}
 
 // paramName is the parameter an element arrives in or leaves through.
 func paramName(prefix string, el Element) string {
@@ -63,6 +68,10 @@ func (e *emitter) usedOperands() map[OperandType]bool {
 
 // entry writes the entry point's attributes and parameters.
 func (e *emitter) entry() {
+	if e.p.Stage == StageGeometry {
+		e.geometryEntry()
+		return
+	}
 	if e.p.Stage == StageCompute {
 		e.line("[numthreads(%d, %d, %d)]", e.group[0], e.group[1], e.group[2])
 	}

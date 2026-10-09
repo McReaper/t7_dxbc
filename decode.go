@@ -68,6 +68,7 @@ const (
 	OperandThreadIDInGroup          OperandType = 34
 	OperandInputCoverage            OperandType = 35
 	OperandThreadIDInGroupFlattened OperandType = 36
+	OperandGSInstanceID             OperandType = 37
 	OperandDepthGreaterEqual        OperandType = 38
 	OperandDepthLessEqual           OperandType = 39
 	OperandStencilRef               OperandType = 41
