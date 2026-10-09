@@ -12,7 +12,10 @@ func init() {
 		opStyles[op] = numFloat
 	}
 	for _, op := range []Opcode{OpIadd, OpIeq, OpIge, OpIlt, OpImad, OpImax, OpImin, OpImul, OpIne, OpIneg, OpIshl,
-		OpIshr, OpItof, OpIbfe, OpLd, OpLdMs, OpLdUavTyped} {
+		OpIshr, OpItof, OpIbfe, OpLd, OpLdMs, OpLdUavTyped, OpEvalSnapped, OpAtomicAnd, OpAtomicOr, OpAtomicXor,
+		OpAtomicCmpStore, OpAtomicIadd, OpAtomicImax, OpAtomicImin, OpAtomicUmax, OpAtomicUmin, OpImmAtomicIadd,
+		OpImmAtomicAnd, OpImmAtomicOr, OpImmAtomicXor, OpImmAtomicExch, OpImmAtomicCmpExch, OpImmAtomicImax,
+		OpImmAtomicImin, OpImmAtomicUmax, OpImmAtomicUmin} {
 		opStyles[op] = numInt
 	}
 	for _, op := range []Opcode{OpUdiv, OpUlt, OpUge, OpUmul, OpUmad, OpUmax, OpUmin, OpUshr, OpUtof, OpAnd, OpOr,

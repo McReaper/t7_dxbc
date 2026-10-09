@@ -36,12 +36,6 @@ func (in *Instruction) Disassemble() string {
 	return name + " " + strings.Join(ops, ", ")
 }
 
-// Opcode-token control bits.
-const (
-	tokSaturate    = 1 << 13
-	tokTestNonZero = 1 << 18
-)
-
 // mnemonic is the opcode's name with its controls: _sat, the _z/_nz of a
 // conditional, the resource of an _indexable sample or load.
 func mnemonic(in *Instruction) string {
@@ -50,21 +44,24 @@ func mnemonic(in *Instruction) string {
 		name = n
 	}
 	if conditional[in.Op] {
-		if in.Token&tokTestNonZero != 0 {
+		if in.TestsNonZero() {
 			name += "_nz"
 		} else {
 			name += "_z"
 		}
 	}
-	if in.Token&tokSaturate != 0 {
+	if in.Saturate() {
 		name += "_sat"
 	}
 	if in.Op == OpSync {
-		name += syncFlags(in.Token >> 11)
+		name += syncFlags(in.SyncFlags())
 	}
 	name += extendedSuffix(in)
-	if in.Op == OpResinfo || in.Op == OpSampleInfo {
-		name += [...]string{"", "_rcpFloat", "_uint", ""}[in.Token>>11&3]
+	switch {
+	case in.Op == OpResinfo:
+		name += [...]string{"", "_rcpFloat", "_uint", ""}[in.ResinfoReturn()]
+	case in.Op == OpSampleInfo && in.SampleinfoUint():
+		name += "_uint"
 	}
 	return name
 }
@@ -85,7 +82,7 @@ var conditional = map[Opcode]bool{
 	OpIf: true, OpBreakc: true, OpContinuec: true, OpRetc: true, OpDiscard: true, OpCallc: true,
 }
 
-var mnemonicOverrides = map[Opcode]string{OpLdMs: "ldms"}
+var mnemonicOverrides = map[Opcode]string{OpLdMs: "ldms", OpSampleInfo: "sampleinfo", OpSamplePos: "samplepos"}
 
 // resourceDims names D3D10_SB_RESOURCE_DIMENSION as the disassembler does.
 var resourceDims = [...]string{"unknown", "buffer", "texture1d", "texture2d", "texture2dms", "texture3d", "texturecube",
@@ -146,5 +143,3 @@ func extendedSuffix(in *Instruction) string {
 	}
 	return s
 }
-
-func signed4(v uint32) int32 { return int32(v&0xF<<28) >> 28 }

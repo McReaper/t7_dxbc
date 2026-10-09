@@ -13,7 +13,7 @@ type opFn func(t *thread, in *dxbc.Instruction) error
 // ops are the simulated instructions; resource ones are added by init.
 var ops = map[dxbc.Opcode]opFn{}
 
-func sat(in *dxbc.Instruction) bool { return in.Token&tokSaturate != 0 }
+func sat(in *dxbc.Instruction) bool { return in.Saturate() }
 
 // float1, float2 and float3 build float instructions from what they do to
 // one component.

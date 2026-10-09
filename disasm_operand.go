@@ -10,7 +10,7 @@ import (
 // disassembler does; a type with a fixed name has no number.
 var operandPrefixes = map[OperandType]string{
 	OperandTemp: "r", OperandInput: "v", OperandOutput: "o", OperandIndexableTemp: "x",
-	OperandSampler: "s", OperandResource: "t", OperandCBuffer: "cb", OperandICB: "icb", OperandLabel: "l",
+	OperandSampler: "s", OperandResource: "t", OperandCBuffer: "cb", OperandICB: "icb", OperandLabel: "l", 14: "rasterizer",
 	OperandNull: "null", OperandUAV: "u", OperandTGSM: "g",
 	11: "vPrim", 12: "oDepth", 15: "oMask", 16: "m", 17: "fb", 18: "ft", 19: "fp", 22: "vOutputControlPointID",
 	23: "vForkInstanceID", 24: "vJoinInstanceID", 25: "vicp", 26: "vocp", 27: "vpc", 28: "vDomain", 29: "this",
@@ -21,7 +21,7 @@ var operandPrefixes = map[OperandType]string{
 // numberless are the operand types whose index, if any, isn't a register
 // number written after the name.
 var numberless = map[OperandType]bool{
-	OperandNull: true, OperandICB: true, 11: true, 12: true, 15: true, 22: true, 23: true, 24: true, 28: true,
+	OperandNull: true, OperandICB: true, 11: true, 14: true, 12: true, 15: true, 22: true, 23: true, 24: true, 28: true,
 	32: true, 33: true, 34: true, 35: true, 36: true, 37: true, 38: true, 39: true, 40: true, 41: true, 42: true,
 }
 

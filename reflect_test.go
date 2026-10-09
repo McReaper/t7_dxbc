@@ -71,6 +71,10 @@ func reflectionDiffs(code []byte, asm string) []string {
 	return diffs
 }
 
+// msNamedInputs are the registers the disassembler names for inputs
+// without a number.
+var msNamedInputs = map[SystemValue]string{SVPrimitiveID: "primID"}
+
 // msNamedOutputs are the registers the disassembler names for outputs
 // without a number.
 var msNamedOutputs = map[SystemValue]string{
@@ -89,6 +93,9 @@ func signatureRows(es []Element, output bool) [][]string {
 		mask, reg, use := letters(e.Mask), fmt.Sprint(e.Register), letters(used)
 		if e.Register == NoRegister { // oDepth and the like: the table names the register instead
 			mask, reg, use = "N/A", msNamedOutputs[e.SystemValueOf()], "NO"
+			if !output {
+				reg = msNamedInputs[e.SystemValueOf()]
+			}
 			if used != 0 {
 				use = "YES"
 			}

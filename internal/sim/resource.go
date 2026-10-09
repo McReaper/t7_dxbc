@@ -63,17 +63,6 @@ var coordCounts = map[dxbc.Dimension][2]int{
 	dxbc.DimTexture3D: {3, 3}, dxbc.DimTextureCube: {3, 0}, dxbc.DimTextureCubeArray: {4, 0}, dxbc.DimBufferEx: {1, 0},
 }
 
-// offsets are an instruction's immediate texel offsets.
-func offsets(in *dxbc.Instruction) [3]int32 {
-	for _, x := range in.Extended {
-		if x&0x3F == 1 {
-			s := func(v uint32) int32 { return int32(v&0xF<<28) >> 28 }
-			return [3]int32{s(x >> 9), s(x >> 13), s(x >> 17)}
-		}
-	}
-	return [3]int32{}
-}
-
 // coords reads a float address: the components the view reads, moved by the
 // offsets, the others 0.
 func (t *thread) coords(op *dxbc.Operand, b *dxbc.Binding, off [3]int32) [4]float32 {
@@ -115,7 +104,7 @@ func sample(t *thread, in *dxbc.Instruction) error {
 	if err != nil {
 		return err
 	}
-	c := t.coords(&in.Operands[1], b, offsets(in))
+	c := t.coords(&in.Operands[1], b, in.Offsets())
 	lod := t.sampleLod(in)
 	reg := uint32(t.index(&in.Operands[2], 0))
 	var f [4]float32
@@ -164,7 +153,7 @@ func gather(t *thread, in *dxbc.Instruction) error {
 	if err != nil {
 		return err
 	}
-	off := offsets(in)
+	off := in.Offsets()
 	if po {
 		o := t.src(&in.Operands[2])
 		off = [3]int32{int32(o[0]), int32(o[1]), int32(o[2])}
@@ -228,7 +217,7 @@ func ld(t *thread, in *dxbc.Instruction) error {
 	n := coordCounts[b.Dim]
 	var key [4]uint32
 	copy(key[:], a[:n[0]])
-	off := offsets(in)
+	off := in.Offsets()
 	for i := range n[1] {
 		key[i] += uint32(off[i])
 	}
@@ -315,10 +304,10 @@ func resinfo(t *thread, in *dxbc.Instruction) error {
 	}
 	var v Value
 	for i, x := range d {
-		switch in.Token >> 11 & 3 {
-		case 2: // uint
+		switch in.ResinfoReturn() {
+		case dxbc.ResinfoUint:
 			v[i] = x
-		case 1: // rcpFloat: the sizes' reciprocals, the mip count as is
+		case dxbc.ResinfoRcpFloat: // the sizes' reciprocals, the mip count as is
 			v[i] = math.Float32bits(float32(x))
 			if i < 3 {
 				v[i] = math.Float32bits(1 / float32(x))
@@ -346,15 +335,15 @@ func lod(t *thread, in *dxbc.Instruction) error {
 	return t.storeFetched(in, &in.Operands[2], Value{}, sat(in))
 }
 
-// msSamples is a multisampled texture's sample count, and samplePositions
-// the standard pattern of four.
+// msSamples is a multisampled texture's or render target's sample count,
+// and samplePositions the standard pattern of four.
 const msSamples = 4
 
 var samplePositions = [msSamples][2]float32{{-0.125, -0.375}, {0.375, -0.125}, {-0.375, 0.125}, {0.125, 0.375}}
 
 func sampleinfo(t *thread, in *dxbc.Instruction) error {
 	v := Value{math.Float32bits(msSamples)}
-	if in.Token>>11&3 == 2 {
+	if in.SampleinfoUint() {
 		v = Value{msSamples}
 	}
 	return t.storeFetched(in, &in.Operands[1], v, sat(in))

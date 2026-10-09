@@ -136,6 +136,9 @@ func DecodeProgram(b []byte) (*Program, error) {
 		if err != nil {
 			return nil, fmt.Errorf("instruction at token %d: %w", d.pos, err)
 		}
+		if n, ok := fixedOperands[in.Op]; ok && len(in.Operands) > n {
+			in.Operands = in.Operands[:n]
+		}
 		p.Instructions = append(p.Instructions, in)
 	}
 	return p, nil
@@ -338,3 +341,8 @@ func (d *decoder) index(rep uint32) (Index, error) {
 	}
 	return idx, nil
 }
+
+// fixedOperands are instructions whose length can count tokens past their
+// operands: the compiler pads samplepos on a texture with a zero dword,
+// which Microsoft's disassembler skips.
+var fixedOperands = map[Opcode]int{OpSamplePos: 3}

@@ -255,7 +255,7 @@ func operandRegister(in *Instruction) (uint32, bool) {
 // declarations are the declarations the HLSL needs.
 var declarations = map[Opcode]func(e *emitter, in *Instruction){
 	OpCustomdata: func(e *emitter, in *Instruction) {
-		if in.Token>>11 == 3 {
+		if in.CustomdataClass() == CustomdataICB {
 			e.icb = in.Payload
 		}
 	},
@@ -291,7 +291,7 @@ var declarations = map[Opcode]func(e *emitter, in *Instruction){
 
 func declareInputPs(e *emitter, in *Instruction) {
 	if v, ok := operandRegister(in); ok {
-		e.inMods[v] = interpolationModifiers[in.Token>>11&0xF]
+		e.inMods[v] = interpolationModifiers[in.InterpolationMode()]
 	}
 }
 

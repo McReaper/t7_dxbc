@@ -134,7 +134,7 @@ func (e *emitter) counterStatement(in *Instruction) {
 // syncStatement writes sync as the barrier intrinsic that waits for the same
 // memory and threads.
 func (e *emitter) syncStatement(in *Instruction) {
-	f := in.Token >> 11
+	f := in.SyncFlags()
 	uav, group, threads := f&(8|4) != 0, f&2 != 0, f&1 != 0
 	name := "GroupMemoryBarrier"
 	switch {
@@ -165,6 +165,9 @@ func initResourceStatements() {
 	otherStatements[OpLod] = (*emitter).lodStatement
 	otherStatements[OpSampleInfo] = (*emitter).sampleinfoStatement
 	otherStatements[OpSamplePos] = (*emitter).sampleposStatement
+	for op := range evalFunctions {
+		otherStatements[op] = (*emitter).evalStatement
+	}
 	otherStatements[OpLdStructured] = (*emitter).ldStructuredStatement
 	otherStatements[OpLdRaw] = (*emitter).ldRawStatement
 	noSat := map[Opcode]func(*emitter, *Instruction){

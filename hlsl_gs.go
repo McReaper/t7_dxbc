@@ -29,9 +29,9 @@ var primitiveInputs = map[uint32]struct {
 var streamTypes = map[uint32]string{1: "PointStream", 3: "LineStream", 5: "TriangleStream"}
 
 func init() {
-	declarations[OpDclGsInputPrimitive] = func(e *emitter, in *Instruction) { e.gs.primitive = in.Token >> 11 & 0x3F }
+	declarations[OpDclGsInputPrimitive] = func(e *emitter, in *Instruction) { e.gs.primitive = in.Primitive() }
 	declarations[OpDclGsOutputPrimitiveTopology] = func(e *emitter, in *Instruction) {
-		e.gs.topology = in.Token >> 11 & 0x3F
+		e.gs.topology = in.Primitive()
 	}
 	declarations[OpDclMaxOutputVertexCount] = func(e *emitter, in *Instruction) {
 		if len(in.Payload) > 0 {

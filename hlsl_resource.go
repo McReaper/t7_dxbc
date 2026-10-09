@@ -52,24 +52,18 @@ func (e *emitter) resourceName(op *Operand) (string, *Binding) {
 // offsetArg is the immediate texel offset of a sample or load, ", int2(1, -1)",
 // or "".
 func offsetArg(in *Instruction, n int) string {
-	for _, x := range in.Extended {
-		if x&0x3F != 1 || n == 0 {
-			continue
-		}
-		o := []int32{signed4(x >> 9), signed4(x >> 13), signed4(x >> 17)}
-		if o[0] == 0 && o[1] == 0 && o[2] == 0 {
-			return ""
-		}
-		parts := make([]string, n)
-		for i := range parts {
-			parts[i] = fmt.Sprint(o[i])
-		}
-		if n == 1 {
-			return ", " + parts[0]
-		}
-		return fmt.Sprintf(", int%d(%s)", n, strings.Join(parts, ", "))
+	o := in.Offsets()
+	if n == 0 || o == [3]int32{} {
+		return ""
 	}
-	return ""
+	parts := make([]string, n)
+	for i := range parts {
+		parts[i] = fmt.Sprint(o[i])
+	}
+	if n == 1 {
+		return ", " + parts[0]
+	}
+	return fmt.Sprintf(", int%d(%s)", n, strings.Join(parts, ", "))
 }
 
 // sampleForms are the sample instructions: the method, and the extra
@@ -286,9 +280,9 @@ func (e *emitter) resinfoStatement(in *Instruction, sat bool) {
 		e.unknown[fmt.Sprintf("resinfo on dimension %d", b.Dim)] = true
 		return
 	}
-	mode := in.Token >> 11 & 3 // 0 float, 1 rcpFloat, 2 uint
+	mode := in.ResinfoReturn()
 	t := tFloat
-	if mode == 2 {
+	if mode == ResinfoUint {
 		t = tUint
 	}
 	// a UAV or a multisampled texture has one mip level: no level to ask
@@ -311,7 +305,7 @@ func (e *emitter) resinfoStatement(in *Instruction, sat bool) {
 	if uav || ms {
 		e.line("dxbc_dims.w = %s;", literal(1, t))
 	}
-	if mode == 1 {
+	if mode == ResinfoRcpFloat {
 		e.line("dxbc_dims.xyz = rcp(dxbc_dims.xyz);")
 	}
 	e.write(&in.Operands[0], "dxbc_dims."+letters(picks(&in.Operands[2], destMask(&in.Operands[0]))), t, sat)
@@ -513,13 +507,21 @@ func (e *emitter) storeRawStatement(in *Instruction) {
 // sampleinfoStatement writes sampleinfo: a multisampled texture's sample
 // count, in x.
 func (e *emitter) sampleinfoStatement(in *Instruction, sat bool) {
+	t := tFloat
+	if in.SampleinfoUint() {
+		t = tUint
+	}
+	if in.Operands[1].Type == operandRasterizer {
+		call := convert("uint4(GetRenderTargetSampleCount(), 0, 0, 0)", tUint, t)
+		if t == tFloat {
+			call = "float4(GetRenderTargetSampleCount(), 0, 0, 0)"
+		}
+		e.write(&in.Operands[0], call+"."+letters(picks(&in.Operands[1], destMask(&in.Operands[0]))), t, sat)
+		return
+	}
 	res, b := e.resourceName(&in.Operands[1])
 	if b == nil {
 		return
-	}
-	t := tFloat
-	if in.Token>>11&3 == 2 {
-		t = tUint
 	}
 	args := "dxbc_dims.y, dxbc_dims.z, dxbc_dims.x"
 	if b.Dim == DimTexture2DMSArray {
@@ -538,11 +540,39 @@ func (e *emitter) sampleinfoStatement(in *Instruction, sat bool) {
 // sampleposStatement writes samplepos: where a sample of a multisampled
 // texture lies in its pixel.
 func (e *emitter) sampleposStatement(in *Instruction, sat bool) {
-	res, b := e.resourceName(&in.Operands[1])
-	if b == nil {
-		return
-	}
 	idx := e.read(&in.Operands[2], picks(&in.Operands[2], 1), tInt)
-	call := fmt.Sprintf("float4(%s.GetSamplePosition(%s), 0, 0)", res, idx)
+	call := fmt.Sprintf("float4(GetRenderTargetSamplePosition(%s), 0, 0)", idx)
+	if in.Operands[1].Type != operandRasterizer {
+		res, b := e.resourceName(&in.Operands[1])
+		if b == nil {
+			return
+		}
+		call = fmt.Sprintf("float4(%s.GetSamplePosition(%s), 0, 0)", res, idx)
+	}
 	e.write(&in.Operands[0], call+"."+letters(picks(&in.Operands[1], destMask(&in.Operands[0]))), tFloat, sat)
+}
+
+// operandRasterizer is the render target's own sample pattern, as sampleinfo
+// and samplepos read it.
+const operandRasterizer OperandType = 14
+
+// evalFunctions are the intrinsics that evaluate an attribute elsewhere in
+// the pixel than its center: eval_centroid, eval_sample_index (a sample
+// index) and eval_snapped (an offset in sixteenths of a pixel).
+var evalFunctions = map[Opcode]string{
+	OpEvalCentroid: "EvaluateAttributeCentroid", OpEvalSampleIndex: "EvaluateAttributeAtSample",
+	OpEvalSnapped: "EvaluateAttributeSnapped",
+}
+
+// evalStatement writes eval_*: dest, input[, sample index or offset].
+func (e *emitter) evalStatement(in *Instruction, sat bool) {
+	d := &in.Operands[0]
+	args := []string{e.read(&in.Operands[1], picks(&in.Operands[1], destMask(d)), tFloat)}
+	switch in.Op {
+	case OpEvalSampleIndex:
+		args = append(args, e.read(&in.Operands[2], picks(&in.Operands[2], 1), tUint))
+	case OpEvalSnapped:
+		args = append(args, e.read(&in.Operands[2], first(&in.Operands[2], 2), tInt))
+	}
+	e.write(d, fmt.Sprintf("%s(%s)", evalFunctions[in.Op], strings.Join(args, ", ")), tFloat, sat)
 }

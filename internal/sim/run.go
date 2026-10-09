@@ -167,7 +167,7 @@ func (t *thread) step() {
 // test is a conditional instruction's outcome: _nz any bit set, _z none.
 func (t *thread) test(in *dxbc.Instruction) bool {
 	v := t.src(&in.Operands[0])[0]
-	if in.Token&tokTestNonZero != 0 {
+	if in.TestsNonZero() {
 		return v != 0
 	}
 	return v == 0

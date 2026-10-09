@@ -59,7 +59,7 @@ func (e *emitter) statements(body []Instruction) error {
 
 func (e *emitter) statement(in *Instruction) error {
 	e.current = in
-	sat := in.Token&tokSaturate != 0
+	sat := in.Saturate()
 	if a, ok := alus[in.Op]; ok && len(in.Operands) >= 2 {
 		e.aluStatement(in, a, sat)
 		return nil
@@ -150,7 +150,7 @@ func closeBlock(e *emitter, _ *Instruction) {
 // none.
 func (e *emitter) condition(in *Instruction) string {
 	v := e.read(&in.Operands[0], picks(&in.Operands[0], 1), tUint)
-	if in.Token&tokTestNonZero != 0 {
+	if in.TestsNonZero() {
 		return v + " != 0"
 	}
 	return v + " == 0"

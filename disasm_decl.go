@@ -40,7 +40,7 @@ func init() {
 		if len(in.Payload) > 0 {
 			ret = returnTypeList(in.Payload[0]) + " "
 		}
-		return "dcl_uav_typed_" + resourceDim(in.Token>>11&0x1F) + uavFlags(in) + " " + ret + declOperand(in)
+		return "dcl_uav_typed_" + resourceDim(in.ResourceDimension()) + uavFlags(in) + " " + ret + declOperand(in)
 	}
 	declFormats[OpDclUnorderedAccessViewRaw] = func(in *Instruction) string {
 		return "dcl_uav_raw" + uavFlags(in) + " " + declOperand(in)
@@ -55,11 +55,12 @@ func init() {
 		return "dcl_tgsm_structured " + declOperand(in) + ", " + payload(in, 0) + ", " + payload(in, 1)
 	}
 	declFormats[OpDclMaxOutputVertexCount] = func(in *Instruction) string { return "dcl_maxout " + payload(in, 0) }
+	declFormats[OpDclGsInstanceCount] = func(in *Instruction) string { return "dcl_gsinstances " + payload(in, 0) }
 	declFormats[OpDclGsOutputPrimitiveTopology] = func(in *Instruction) string {
-		return "dcl_outputtopology " + named(topologies, in.Token>>11&0x3F)
+		return "dcl_outputtopology " + named(topologies, in.Primitive())
 	}
 	declFormats[OpDclGsInputPrimitive] = func(in *Instruction) string {
-		return "dcl_inputprimitive " + named(primitives, in.Token>>11&0x3F)
+		return "dcl_inputprimitive " + named(primitives, in.Primitive())
 	}
 	declFormats[OpDclThreadGroup] = func(in *Instruction) string {
 		return fmt.Sprintf("dcl_thread_group %s, %s, %s", payload(in, 0), payload(in, 1), payload(in, 2))
@@ -137,7 +138,7 @@ func disasmConstantBuffer(in *Instruction) string {
 var samplerModes = []string{"mode_default", "mode_comparison", "mode_mono"}
 
 func disasmSampler(in *Instruction) string {
-	mode := in.Token >> 11 & 0xF
+	mode := in.InterpolationMode()
 	name := fmt.Sprintf("mode%d", mode)
 	if int(mode) < len(samplerModes) {
 		name = samplerModes[mode]
@@ -150,9 +151,9 @@ func disasmResource(in *Instruction) string {
 	if len(in.Payload) > 0 {
 		ret = returnTypeList(in.Payload[0]) + " "
 	}
-	dim := resourceDim(in.Token >> 11 & 0x1F)
-	if n := in.Token >> 16 & 0x7F; n != 0 { // a multisampled texture's sample count
-		dim += fmt.Sprintf("(%d)", n)
+	dim := resourceDim(in.ResourceDimension())
+	if d := in.ResourceDimension(); d == 4 || d == 9 { // a multisampled texture's sample count, 0 if unknown
+		dim += fmt.Sprintf("(%d)", in.Token>>16&0x7F)
 	}
 	return "dcl_resource_" + dim + " " + ret + declOperand(in)
 }
@@ -161,7 +162,7 @@ var interpolationModes = []string{"", "constant", "linear", "linear centroid", "
 	"linear noperspective centroid", "linear sample", "linear noperspective sample"}
 
 func interpolation(in *Instruction) string {
-	mode := in.Token >> 11 & 0xF
+	mode := in.InterpolationMode()
 	if int(mode) < len(interpolationModes) && mode != 0 {
 		return interpolationModes[mode] + " "
 	}
@@ -186,8 +187,8 @@ func sysName(in *Instruction) string {
 // disasmCustomdata writes an immediate constant buffer; other customdata
 // blocks (comments, debug info) aren't instructions.
 func disasmCustomdata(in *Instruction) string {
-	if in.Token>>11 != 3 {
-		return fmt.Sprintf("customdata %d", in.Token>>11)
+	if in.CustomdataClass() != CustomdataICB {
+		return fmt.Sprintf("customdata %d", in.CustomdataClass())
 	}
 	var rows []string
 	for i := 0; i+4 <= len(in.Payload); i += 4 {

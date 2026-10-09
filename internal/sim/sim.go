@@ -26,12 +26,6 @@ var ErrSteps = errors.New("step limit reached")
 // maxSteps bounds one invocation.
 const maxSteps = 1 << 20
 
-// Opcode-token bits.
-const (
-	tokSaturate    = 1 << 13
-	tokTestNonZero = 1 << 18
-)
-
 // view names a t#, u# or g# register.
 type view struct {
 	t   dxbc.OperandType
@@ -117,7 +111,7 @@ func (m *Machine) declare(in *dxbc.Instruction) {
 	}
 	switch in.Op {
 	case dxbc.OpCustomdata:
-		if in.Token>>11 == 3 {
+		if in.CustomdataClass() == dxbc.CustomdataICB {
 			m.icb = in.Payload
 		}
 	case dxbc.OpDclTemps:
