@@ -222,47 +222,113 @@ func TestFixturesAgree(t *testing.T) {
 
 // TestCorpusAgrees is the opt-in semantic oracle over a shader cache
 // ($DXBC_CORPUS, sampled by $DXBC_CORPUS_LIMIT): each shader that recompiles
-// runs on random inputs beside the original.
+// runs on random inputs beside the original. With $DXBC_JOURNAL each result
+// is appended to that file as it comes, and a rerun skips the shaders it
+// already holds: a run over a whole cache takes hours.
 func TestCorpusAgrees(t *testing.T) {
 	dir := os.Getenv("DXBC_CORPUS")
 	if dir == "" || !d3dc.Available() {
 		t.Skip("set DXBC_CORPUS to a directory of compiled shaders")
 	}
-	paths := corpusPaths(t, dir)
-	type result struct{ path, kind, detail string }
-	results := make([]result, len(paths))
+	j, err := openJournal(os.Getenv("DXBC_JOURNAL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.close()
+	var todo []string
+	for _, p := range corpusPaths(t, dir) {
+		if _, ok := j.done[filepath.Base(p)]; !ok {
+			todo = append(todo, p)
+		}
+	}
+	// the largest first: they take longest to compile
+	sort.SliceStable(todo, func(a, b int) bool { return size(todo[a]) > size(todo[b]) })
 	var wg sync.WaitGroup
-	next := make(chan int)
+	next := make(chan string)
 	for range runtime.NumCPU() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := range next {
-				kind, detail := checkOne(paths[i])
-				results[i] = result{paths[i], kind, detail}
+			for p := range next {
+				kind, detail := checkOne(p)
+				j.add(journalEntry{filepath.Base(p), kind, detail})
 			}
 		}()
 	}
-	for i := range paths {
-		next <- i
+	for _, p := range todo {
+		next <- p
 	}
 	close(next)
 	wg.Wait()
+	summarize(t, j.done)
+}
+
+// journalEntry is one shader's result.
+type journalEntry struct{ name, kind, detail string }
+
+// journal keeps results in a file, a line each, tab-separated.
+type journal struct {
+	mu   sync.Mutex
+	f    *os.File
+	done map[string]journalEntry
+}
+
+func openJournal(path string) (*journal, error) {
+	j := &journal{done: map[string]journalEntry{}}
+	if path == "" {
+		return j, nil
+	}
+	if b, err := os.ReadFile(path); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			if parts := strings.SplitN(line, "\t", 3); len(parts) == 3 {
+				j.done[parts[0]] = journalEntry{parts[0], parts[1], parts[2]}
+			}
+		}
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	j.f = f
+	return j, nil
+}
+
+func (j *journal) add(e journalEntry) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.done[e.name] = e
+	if j.f != nil {
+		detail := strings.NewReplacer("\t", " ", "\n", " ").Replace(e.detail)
+		fmt.Fprintf(j.f, "%s\t%s\t%s\n", e.name, e.kind, detail)
+	}
+}
+
+func (j *journal) close() {
+	if j.f != nil {
+		_ = j.f.Close()
+	}
+}
+
+// summarize logs how many shaders fell in each kind, with the smallest as an
+// example.
+func summarize(t *testing.T, done map[string]journalEntry) {
 	counts := map[string]int{}
-	example := map[string]result{}
-	for _, r := range results {
-		counts[r.kind]++
-		if ex, ok := example[r.kind]; !ok || size(r.path) < size(ex.path) {
-			example[r.kind] = r
+	example := map[string]journalEntry{}
+	dir := os.Getenv("DXBC_CORPUS")
+	for _, e := range done {
+		counts[e.kind]++
+		ex, ok := example[e.kind]
+		if !ok || size(filepath.Join(dir, e.name)) < size(filepath.Join(dir, ex.name)) {
+			example[e.kind] = e
 		}
 	}
 	kinds := make([]string, 0, len(counts))
 	for k := range counts {
 		kinds = append(kinds, k)
 	}
-	sort.Slice(kinds, func(i, j int) bool { return counts[kinds[i]] > counts[kinds[j]] })
+	sort.Slice(kinds, func(a, b int) bool { return counts[kinds[a]] > counts[kinds[b]] })
 	for _, k := range kinds {
-		t.Logf("%5d  %s  (e.g. %s: %s)", counts[k], k, filepath.Base(example[k].path), example[k].detail)
+		t.Logf("%5d  %s  (e.g. %s: %s)", counts[k], k, example[k].name, example[k].detail)
 	}
 }
 
