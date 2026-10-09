@@ -328,9 +328,25 @@ var helperSources = map[string]string{
 	"dxbc_bfi": "uint dxbc_bfi(uint w, uint o, uint i, uint b) { w &= 31; o &= 31; " +
 		"uint m = ((1u << w) - 1) << o; return ((i << o) & m) | (b & ~m); }",
 	// firstbit_hi and firstbit_shi count from the most significant bit,
-	// firstbithigh from the least
-	"dxbc_firstbit_hi":  "uint dxbc_firstbit_hi(uint x) { uint b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }",
-	"dxbc_firstbit_shi": "uint dxbc_firstbit_shi(int x) { int b = firstbithigh(x); return b == -1 ? 0xffffffffu : 31 - b; }",
+	// firstbithigh from the least; an overload per vector size ($U uint or
+	// uintN, $I int or intN), as a scalar parameter would take only x
+	"dxbc_firstbit_hi":  "$U dxbc_firstbit_hi($U x) { $U b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }",
+	"dxbc_firstbit_shi": "$U dxbc_firstbit_shi($I x) { $I b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }",
+}
+
+// helperSource writes a helper, once per vector size if it is written for
+// any.
+func helperSource(name string) string {
+	src := helperSources[name]
+	if !strings.Contains(src, "$U") {
+		return src + "\n"
+	}
+	var sb strings.Builder
+	for n := 1; n <= 4; n++ {
+		sb.WriteString(strings.NewReplacer("$U", vecType(tUint, n), "$I", vecType(tInt, n)).Replace(src))
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 // readPair reads the two values a movc or swapc chooses between, in the type

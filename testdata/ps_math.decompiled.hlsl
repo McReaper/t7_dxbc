@@ -31,7 +31,13 @@ static const uint4 icb[5] = { uint4(0x3dcccccd, 0x00000000, 0x00000000, 0x000000
 
 uint dxbc_bfi(uint w, uint o, uint i, uint b) { w &= 31; o &= 31; uint m = ((1u << w) - 1) << o; return ((i << o) & m) | (b & ~m); }
 uint dxbc_firstbit_hi(uint x) { uint b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }
-uint dxbc_firstbit_shi(int x) { int b = firstbithigh(x); return b == -1 ? 0xffffffffu : 31 - b; }
+uint2 dxbc_firstbit_hi(uint2 x) { uint2 b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }
+uint3 dxbc_firstbit_hi(uint3 x) { uint3 b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }
+uint4 dxbc_firstbit_hi(uint4 x) { uint4 b = firstbithigh(x); return b == 0xffffffffu ? b : 31 - b; }
+uint dxbc_firstbit_shi(int x) { int b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
+uint2 dxbc_firstbit_shi(int2 x) { int2 b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
+uint3 dxbc_firstbit_shi(int3 x) { int3 b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
+uint4 dxbc_firstbit_shi(int4 x) { int4 b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
 int dxbc_ibfe(uint w, uint o, int s) { w &= 31; o &= 31; if (w == 0) return 0; if (w + o < 32) return (s << (32 - (w + o))) >> (32 - w); return s >> o; }
 uint dxbc_ubfe(uint w, uint o, uint s) { w &= 31; o &= 31; if (w == 0) return 0; if (w + o < 32) return (s << (32 - (w + o))) >> (32 - w); return s >> o; }
 

@@ -225,8 +225,7 @@ func (e *emitter) helperDecls() string {
 	sort.Strings(names)
 	var sb strings.Builder
 	for _, n := range names {
-		sb.WriteString(helperSources[n])
-		sb.WriteByte('\n')
+		sb.WriteString(helperSource(n))
 	}
 	for _, n := range e.generatedOrder {
 		sb.WriteString(e.generated[n])

@@ -236,12 +236,13 @@ func (e *emitter) readAny(op *Operand, cs []uint8) (string, valType) {
 	return e.readRaw(op, cs, tUint)
 }
 
-// looksInteger tells an integer's bits from a float's as the disassembler
-// does: a float with a zero or all-ones exponent is a denormal, an infinity
-// or a NaN, which shaders rarely hold, and small integers have one.
+// looksInteger reports whether a literal's bits must be written as an
+// integer: those no float literal keeps once the compiler folds it, a
+// denormal (flushed), an infinity or NaN, and -0 (whose sign is lost).
+// Small integers are all of them; 0 is either.
 func looksInteger(v uint32) bool {
 	exp := v >> 23 & 0xFF
-	return v != 0 && v != 0x80000000 && (exp == 0 || exp == 0xFF)
+	return v != 0 && (exp == 0 || exp == 0xFF)
 }
 
 // readIndexable reads an indexable temporary, an array of float4 or of uint4.
