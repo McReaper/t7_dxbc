@@ -40,13 +40,17 @@
 // than 0, and the high half of imul and umul. Two differences remain in what
 // recompiles: a constant buffer the original declares but never reads is not
 // declared again, and inputs the original declared as an array pack as
-// separate elements.
+// separate elements. The compiler itself rarely crashes on, or miscompiles, a
+// correct decompilation; nothing in the HLSL can avoid it.
 //
 // # Testing
 //
-// The decompiler is judged by two oracles on Windows, over the fixtures and,
-// opt in, a whole shader cache: the HLSL is compiled again with Microsoft's
-// compiler and must keep the interface (TestDecompileRecompiles), and both
-// programs run in internal/sim on the same random inputs and must agree
-// (TestFixturesAgree).
+// The decompiler is judged on Windows by two oracles at once
+// (internal/oracle, then internal/sim): the HLSL is compiled again with
+// Microsoft's compiler and must keep the interface, its declarations and its
+// barriers; and the original and the recompiled program run in the simulator
+// on the same random inputs and must agree. They judge the fixtures, random
+// shaders the compiler builds from generated HLSL (pixel, compute, and
+// signatures packed by random interpolation modes), and, opt in, a whole
+// shader cache (TestCorpusAgrees).
 package dxbc
