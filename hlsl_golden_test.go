@@ -14,8 +14,12 @@ var update = flag.Bool("update", false, "rewrite the golden decompilations in te
 // TestDecompileGolden compares each fixture's decompilation with the one in
 // testdata/<name>.decompiled.hlsl, so any change to the output shows, on any
 // OS. The Windows oracles say whether the output is right; -update records
-// it once they do.
+// it once they do. Any change fails it, a harmless one too, so mutation
+// testing sets DXBC_NO_GOLDEN to be judged by the oracles alone.
 func TestDecompileGolden(t *testing.T) {
+	if os.Getenv("DXBC_NO_GOLDEN") != "" {
+		t.Skip("DXBC_NO_GOLDEN: judged by the oracles alone, as mutation testing does")
+	}
 	for name, f := range fixtures(t) {
 		t.Run(name, func(t *testing.T) {
 			src, err := Decompile(f[0])
