@@ -291,3 +291,68 @@ func (g *shaderGen) statement(depth int) {
 		fmt.Fprintf(g.out, "%s\tbreak;\n%sdefault:\n%s\tbreak;\n%s}\n", ind, ind, ind, ind)
 	}
 }
+
+// interpolationModes are the modifiers a random signature element gets.
+var interpolationModes = []string{"", "", "nointerpolation ", "centroid ", "noperspective ", "noperspective centroid ",
+	"sample ", "linear "}
+
+// signatureElement is one random element: its declaration and an expression
+// of its type built from a seed value.
+func (g *shaderGen) signatureElement(i int, withMode bool) (decl, value string) {
+	kind, n := g.r.IntN(3), 1+g.r.IntN(4)
+	mode := ""
+	switch {
+	case kind != kFloat:
+		mode = "nointerpolation " // integers are never interpolated
+	case withMode:
+		mode = g.pick(interpolationModes...)
+	}
+	decl = fmt.Sprintf("%s%s v%d : TEXCOORD%d", mode, vec(kind, n), i, i)
+	switch kind {
+	case kFloat:
+		value = fmt.Sprintf("(%s)(p.%s * %d.5)", vec(kind, n), g.swizzle(n), i+1)
+	case kUint:
+		value = fmt.Sprintf("(%s)(id + %du)", vec(kind, n), i)
+	default:
+		value = fmt.Sprintf("(%s)(int(id) - %d)", vec(kind, n), i*3)
+	}
+	return decl, value
+}
+
+// randomVertexShader writes a vertex shader whose outputs are random
+// elements, each with an interpolation mode its signature won't record.
+func randomVertexShader(seed uint64) string {
+	g := &shaderGen{r: rand.New(rand.NewPCG(seed, seed^0x2545F4914F6CDD1D))}
+	var params, body []string
+	for i := range 2 + g.r.IntN(8) {
+		decl, value := g.signatureElement(i, true)
+		params = append(params, "out "+decl)
+		body = append(body, fmt.Sprintf("\tv%d = %s;", i, value))
+	}
+	if g.r.IntN(3) == 0 {
+		params = append(params, "out float clip : SV_ClipDistance0")
+		body = append(body, "\tclip = p.x - p.y;")
+	}
+	return fmt.Sprintf("void main(float4 p : POSITION, uint id : SV_VertexID, out float4 pos : SV_Position,\n\t%s)\n{\n\tpos = p;\n%s\n}\n",
+		strings.Join(params, ",\n\t"), strings.Join(body, "\n"))
+}
+
+// randomPixelInputs writes a pixel shader whose inputs are random elements,
+// some never read: their modes decided the packing all the same.
+func randomPixelInputs(seed uint64) string {
+	g := &shaderGen{r: rand.New(rand.NewPCG(seed, seed^0x9E3779B97F4A7C15))}
+	params := []string{"float4 pos : SV_Position"}
+	var sum []string
+	for i := range 2 + g.r.IntN(8) {
+		decl, _ := g.signatureElement(i, true)
+		params = append(params, decl)
+		if g.r.IntN(3) != 0 {
+			sum = append(sum, fmt.Sprintf("dot(float4(v%d.xxxx), float4(1, 2, 3, 4))", i))
+		}
+	}
+	if len(sum) == 0 {
+		sum = []string{"0"}
+	}
+	return fmt.Sprintf("float4 main(%s) : SV_Target\n{\n\treturn pos * 0.001 + %s;\n}\n",
+		strings.Join(params, ",\n\t"), strings.Join(sum, "\n\t\t+ "))
+}

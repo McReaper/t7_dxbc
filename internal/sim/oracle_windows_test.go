@@ -518,3 +518,37 @@ func TestHLSLOne(t *testing.T) {
 		t.Errorf("%d of %d runs differ (%s), interface %v\n%s", failed, runs, first, diffs, dec)
 	}
 }
+
+// TestRandomSignaturesAgree compiles vertex shaders with random outputs and
+// pixel shaders with random inputs, the packing the decompiler must
+// reproduce from modes the signatures don't record, and holds each to both
+// oracles. $DXBC_RANDOM sets how many of each (default 150).
+func TestRandomSignaturesAgree(t *testing.T) {
+	if !oracle.Available() {
+		t.Skip("d3dcompiler_47.dll not found")
+	}
+	n := 150
+	if v, err := strconv.Atoi(os.Getenv("DXBC_RANDOM")); err == nil {
+		n = v
+	}
+	for seed := uint64(1); seed <= uint64(n); seed++ {
+		for _, c := range []struct{ src, target string }{
+			{randomVertexShader(seed), "vs_5_0"}, {randomPixelInputs(seed), "ps_5_0"},
+		} {
+			code, err := d3dc.Compile([]byte(c.src), "random.hlsl", "main", c.target)
+			if err != nil {
+				t.Fatalf("seed %d: the generated %s doesn't compile: %v\n%s", seed, c.target, err, c.src)
+			}
+			orig, again, dec, diffs, err := recompile(code)
+			if err != nil {
+				t.Errorf("seed %d %s: %v\n%s", seed, c.target, err, c.src)
+				continue
+			}
+			failed, first, err := agreement(orig, again)
+			if err != nil || failed > 0 || len(diffs) > 0 {
+				t.Errorf("seed %d %s: %v, %d runs differ (%s), interface %v\n--- source\n%s\n--- decompiled\n%s", seed,
+					c.target, err, failed, first, diffs, c.src, dec)
+			}
+		}
+	}
+}
