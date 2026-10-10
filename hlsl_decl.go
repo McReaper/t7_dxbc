@@ -46,45 +46,86 @@ func (e *emitter) declarations() {
 	e.line("")
 }
 
-// structDecls writes every struct type the buffers use, members first.
-func (e *emitter) structDecls() {
-	done := map[string]bool{}
-	var visit func(t *Type)
-	visit = func(t *Type) {
-		if t.Class != ClassStruct {
-			return
-		}
-		name := identifier(t.Name)
-		if done[name] {
-			return
-		}
-		done[name] = true
-		for _, m := range t.Members {
-			visit(m.Type)
-		}
-		e.line("struct %s", name)
-		e.line("{")
-		for _, m := range t.Members {
-			e.line("  %s %s%s;", declType(m.Type), identifier(m.Name), arraySuffix(m.Type))
-		}
-		e.line("};")
-		e.line("")
+// structName is a struct type's name: the reflection's, or the one
+// nameStructs gave it.
+func (e *emitter) structName(t *Type) string {
+	if name, ok := e.structNames[t]; ok {
+		return name
 	}
-	// in the reflection's order: the output must not depend on map order
+	return identifier(t.Name)
+}
+
+// nameStructs names the struct types the reflection leaves unnamed (it
+// records names from Shader Model 5 on) after the variable or buffer holding
+// them, lights_t, so that two of them don't both declare a struct _.
+func (e *emitter) nameStructs() {
+	e.structNames = map[*Type]string{}
+	taken := map[string]bool{}
+	e.visitStructs(func(t *Type, holder string) {
+		name := identifier(t.Name)
+		if t.Name == "" {
+			name = identifier(holder) + "_t"
+			for i := 2; taken[name]; i++ {
+				name = fmt.Sprintf("%s_t%d", identifier(holder), i)
+			}
+		}
+		taken[name] = true
+		e.structNames[t] = name
+	})
+}
+
+// visitStructs calls f once on every struct type the buffers use, members
+// before the struct holding them, with the name of what holds it (a
+// variable, a buffer, a member path), in the reflection's order: the output
+// must not depend on map order.
+func (e *emitter) visitStructs(f func(t *Type, holder string)) {
+	seen := map[*Type]bool{}
+	var visit func(t *Type, holder string)
+	visit = func(t *Type, holder string) {
+		if t.Class != ClassStruct || seen[t] {
+			return
+		}
+		seen[t] = true
+		for _, m := range t.Members {
+			visit(m.Type, holder+"_"+m.Name)
+		}
+		f(t, holder)
+	}
 	for i := range e.ref.Buffers {
 		for _, l := range e.cbuffers {
 			if l.buf == &e.ref.Buffers[i] {
 				for _, v := range l.vars {
-					visit(v.Type)
+					visit(v.Type, v.Name)
 				}
 			}
 		}
 	}
 	for _, b := range e.ref.Bindings {
 		if t := e.structs[b.Name]; t != nil {
-			visit(t)
+			visit(t, b.Name)
 		}
 	}
+}
+
+// structDecls writes every struct type the buffers use, members first, and
+// one struct for the types the reflection records twice under one name.
+func (e *emitter) structDecls() {
+	e.nameStructs()
+	done := map[string]bool{}
+	e.visitStructs(func(t *Type, _ string) {
+		name := e.structName(t)
+		if done[name] {
+			return
+		}
+		done[name] = true
+		e.line("struct %s", name)
+		e.line("{")
+		for _, m := range t.Members {
+			e.line("  %s %s%s;", e.declType(m.Type), identifier(m.Name), arraySuffix(m.Type))
+		}
+		e.line("};")
+		e.line("")
+	})
 }
 
 // cbufferDecl writes a constant buffer with each variable at its offset. The
@@ -93,7 +134,7 @@ func (e *emitter) structDecls() {
 func (e *emitter) cbufferDecl(reg uint32, l *cbufferLayout) {
 	if l.buf.Name == "$Globals" {
 		for _, v := range l.vars {
-			e.line("%s %s%s;", declType(v.Type), identifier(v.Name), arraySuffix(v.Type))
+			e.line("%s %s%s;", e.declType(v.Type), identifier(v.Name), arraySuffix(v.Type))
 		}
 		e.line("")
 		return
@@ -101,7 +142,7 @@ func (e *emitter) cbufferDecl(reg uint32, l *cbufferLayout) {
 	e.line("cbuffer %s : register(b%d)", identifier(l.buf.Name), reg)
 	e.line("{")
 	for _, v := range l.vars {
-		e.line("  %s %s%s : packoffset(%s);", declType(v.Type), identifier(v.Name), arraySuffix(v.Type), packOffset(v.Offset))
+		e.line("  %s %s%s : packoffset(%s);", e.declType(v.Type), identifier(v.Name), arraySuffix(v.Type), packOffset(v.Offset))
 	}
 	e.line("}")
 	e.line("")
@@ -150,7 +191,7 @@ func (e *emitter) resourceDecl(b *Binding) {
 		InputUAVStructuredWithCounter:
 		elem := "uint"
 		if t := e.structs[b.Name]; t != nil {
-			elem = declType(t)
+			elem = e.declType(t)
 		}
 		e.line("%s<%s> %s : register(%s);", structuredKinds[b.Input], elem, name, reg)
 	case InputByteAddress:

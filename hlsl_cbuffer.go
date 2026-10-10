@@ -150,10 +150,10 @@ func typeSize(t *Type, packed bool) uint32 {
 
 // declType is a variable's type as a declaration spells it: row_major for a
 // row-major matrix, the struct's name for a struct.
-func declType(t *Type) string {
+func (e *emitter) declType(t *Type) string {
 	name := t.HLSLName()
 	if t.Class == ClassStruct {
-		name = identifier(t.Name)
+		name = e.structName(t)
 	}
 	if t.Class == ClassMatrixRows {
 		return "row_major " + name

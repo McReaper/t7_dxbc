@@ -75,8 +75,9 @@ type emitter struct {
 	uavFlags map[uint32]uint32 // u# -> its declaration's flags
 	global   uint32            // the global flags
 
-	inDecls, outDecls   []sigDecl       // how the signatures are declared
-	inFields, outFields map[slot]string // what names each element in them
+	inDecls, outDecls   []sigDecl        // how the signatures are declared
+	structNames         map[*Type]string // struct types by name, named or not
+	inFields, outFields map[slot]string  // what names each element in them
 
 	generated      map[string]string // helpers written for this shader, by name
 	generatedOrder []string
