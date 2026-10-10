@@ -103,8 +103,11 @@ type outcome struct {
 	discarded bool
 }
 
-func (s *shader) run(seed uint32) (outcome, error) {
+func (s *shader) run(seed uint32, counting bool) (outcome, error) {
 	w := NewWorld(s.ref, seed)
+	if counting {
+		w = NewCountingWorld(s.ref, seed)
+	}
 	o := outcome{values: map[string]uint32{}}
 	if s.p.Stage == dxbc.StageCompute {
 		if err := s.m.RunGroup(w, [3]uint32{seed % 3, seed % 2, 0}); err != nil {
@@ -199,12 +202,22 @@ func differences(a, b outcome) []string {
 }
 
 // agreement runs both shaders on the same random inputs: how many runs
-// differ, and the first difference.
+// differ, and the first difference. When no run ends, the shader likely
+// reads a loop count from a float variable: it runs again with integers in
+// them.
 func agreement(orig, again *shader) (failed int, first string, err error) {
+	failed, first, err = agreementOf(orig, again, false)
+	if errors.Is(err, ErrSteps) {
+		return agreementOf(orig, again, true)
+	}
+	return failed, first, err
+}
+
+func agreementOf(orig, again *shader, counting bool) (failed int, first string, err error) {
 	compared := 0
 	for seed := uint32(1); seed <= runs; seed++ {
-		a, errA := orig.run(seed)
-		b, errB := again.run(seed)
+		a, errA := orig.run(seed, counting)
+		b, errB := again.run(seed, counting)
 		switch {
 		case errors.Is(errA, ErrSteps) && errors.Is(errB, ErrSteps):
 			continue

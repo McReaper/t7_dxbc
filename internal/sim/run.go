@@ -14,6 +14,7 @@ type World struct {
 	Seed     uint32
 	UAV      map[Cell]uint32 // the cells written
 	counters map[uint32]uint32
+	counting bool // integers in the float variables
 }
 
 // Cell is one dword of unordered-access memory: u#, its address (coordinates,

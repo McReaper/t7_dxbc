@@ -8,9 +8,17 @@ import (
 )
 
 // NewWorld fills a shader's constant buffers from a seed: each variable with
-// values of its type, floats in [-1, 2), integers in [0, 8), bools 0 or 1.
-func NewWorld(ref *dxbc.Reflection, seed uint32) *World {
-	w := &World{CB: map[uint32][]uint32{}, Seed: seed, UAV: map[Cell]uint32{}, counters: map[uint32]uint32{}}
+// values of its type, floats in [-1, 2], integers in [0, 8), bools 0 or 1.
+func NewWorld(ref *dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, false) }
+
+// NewCountingWorld fills a shader's constant buffers as NewWorld does, but
+// with integers in [0, 8) in the float variables too: a program that reads a
+// loop count from one (asuint) ends.
+func NewCountingWorld(ref *dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, true) }
+
+func newWorld(ref *dxbc.Reflection, seed uint32, counting bool) *World {
+	w := &World{CB: map[uint32][]uint32{}, Seed: seed, UAV: map[Cell]uint32{}, counters: map[uint32]uint32{},
+		counting: counting}
 	buffers := map[string]*dxbc.Buffer{}
 	for i := range ref.Buffers {
 		buffers[ref.Buffers[i].Name] = &ref.Buffers[i]
@@ -35,10 +43,11 @@ func NewWorld(ref *dxbc.Reflection, seed uint32) *World {
 // value is a constant of a base type.
 func (w *World) value(t dxbc.VarType, slot, at uint32) uint32 {
 	h := w.mix(0xCB, slot, at)
-	switch t {
-	case dxbc.TypeBool:
+	switch {
+	case t == dxbc.TypeBool:
 		return h % 2
-	case dxbc.TypeInt, dxbc.TypeUint, dxbc.TypeUint8, dxbc.TypeMin16Int, dxbc.TypeMin12Int, dxbc.TypeMin16Uint:
+	case w.counting, t == dxbc.TypeInt, t == dxbc.TypeUint, t == dxbc.TypeUint8, t == dxbc.TypeMin16Int,
+		t == dxbc.TypeMin12Int, t == dxbc.TypeMin16Uint:
 		return h % 8
 	}
 	return math.Float32bits(float32(h%3001)/1000 - 1)
