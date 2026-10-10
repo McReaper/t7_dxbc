@@ -16,4 +16,6 @@ if ! command -v golangci-lint >/dev/null 2>&1; then
   exit 0
 fi
 pkgs=$(for f in $files; do echo "./$(dirname "$f")"; done | sort -u)
-exec golangci-lint run $pkgs
+# twice: the code behind the Windows-only oracles, and the Linux build CI lints
+golangci-lint run $pkgs || exit 1
+GOOS=linux exec golangci-lint run $pkgs
