@@ -79,6 +79,12 @@ func near(a, b uint32) bool {
 	if a == b {
 		return true
 	}
+	// the NaN an operation makes takes its sign from the order of the
+	// operands, which the compiler may change: the default NaN of either sign
+	// is one result (other NaN bits may be an integer's, compared exactly)
+	if a&^(1<<31) == 0x7FC00000 && b&^(1<<31) == 0x7FC00000 {
+		return true
+	}
 	floatLike := func(x uint32) bool {
 		e := x >> 23 & 0xFF
 		return x&^(1<<31) == 0 || e != 0 && e != 0xFF
@@ -456,4 +462,23 @@ func TestAgreeOne(t *testing.T) {
 		t.Skip("set DXBC_ONE to a compiled shader")
 	}
 	checkFixture(t, p)
+}
+
+func TestNear(t *testing.T) {
+	cases := []struct {
+		a, b uint32
+		want bool
+	}{
+		{0x3F800000, 0x3F800001, true},  // 1.0, an ulp apart
+		{0x3F800000, 0x40000000, false}, // 1.0, 2.0
+		{0x7FC00000, 0xFFC00000, true},  // the default NaN, either sign
+		{0xFFFFFFF5, 0x7FFFFFF5, false}, // -11 and another integer, NaN-looking
+		{5, 6, false},                   // small integers
+		{0, 0x80000000, true},           // zeros
+	}
+	for _, c := range cases {
+		if got := near(c.a, c.b); got != c.want {
+			t.Errorf("near(%#x, %#x) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
 }
