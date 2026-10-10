@@ -138,3 +138,16 @@ func TestDecompileTruncatedDeclarations(t *testing.T) {
 		}
 	}
 }
+
+// An instruction with fewer operands than its opcode reads is an error, not a
+// panic: the fuzzer's movc with one operand (FuzzDecompile/092c2b4b793d92c2 in
+// CI).
+func TestDecompileShortInstruction(t *testing.T) {
+	r0x := []uint32{2 | 1<<4 | uint32(dxbc.OperandTemp)<<12 | 1<<20, 0}
+	tokens := append(dclTemps(1), append([]uint32{uint32(dxbc.OpMovc) | 3<<24}, r0x...)...)
+	tokens = append(tokens, uint32(dxbc.OpRet)|1<<24)
+	src, err := Decompile(shaderOf(dxbc.StagePixel, tokens))
+	if err == nil || !strings.Contains(err.Error(), "malformed") {
+		t.Errorf("err = %v, hlsl %q", err, src)
+	}
+}

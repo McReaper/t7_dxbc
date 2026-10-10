@@ -18,7 +18,17 @@ import (
 // one or more statements. The package doc says how registers become
 // variables. A shader it can't finish comes back with what it wrote, and an
 // error naming what is missing.
-func Decompile(b []byte) (string, error) {
+//
+// Whatever the bytes, it returns HLSL or an error. The readers check every
+// offset, but the statements trust an instruction to carry the operands its
+// opcode has, so a malformed program (a movc with one operand) is caught here
+// and reported, not left to crash the caller.
+func Decompile(b []byte) (src string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			src, err = "", fmt.Errorf("malformed shader: %v", r)
+		}
+	}()
 	c, err := dxbc.Parse(b)
 	if err != nil {
 		return "", err
