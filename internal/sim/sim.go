@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/McReaper/dxbc"
+	"github.com/McReaper/t7dxbc"
 )
 
 // Value is a register's four components, as bits.
@@ -28,14 +28,14 @@ const maxSteps = 1 << 20
 
 // view names a t#, u# or g# register.
 type view struct {
-	t   dxbc.OperandType
+	t   t7dxbc.OperandType
 	reg uint32
 }
 
 // Machine is a program ready to run: its body and the declarations it reads.
 type Machine struct {
-	p        *dxbc.Program
-	body     []dxbc.Instruction
+	p        *t7dxbc.Program
+	body     []t7dxbc.Instruction
 	flow     flow
 	temps    int
 	idx      map[uint32]uint32    // x# -> elements
@@ -43,15 +43,15 @@ type Machine struct {
 	strides  map[view]uint32      // a structured t# or u# -> its stride
 	icb      []uint32
 	group    [3]uint32
-	binds    map[view]*dxbc.Binding
-	elems    map[view]*dxbc.Type // a structured view -> its element type
-	vertices int                 // a geometry shader's input vertices
+	binds    map[view]*t7dxbc.Binding
+	elems    map[view]*t7dxbc.Type // a structured view -> its element type
+	vertices int                   // a geometry shader's input vertices
 }
 
 // New reads a program's declarations.
-func New(p *dxbc.Program, ref *dxbc.Reflection) (*Machine, error) {
+func New(p *t7dxbc.Program, ref *t7dxbc.Reflection) (*Machine, error) {
 	m := &Machine{p: p, idx: map[uint32]uint32{}, tgsm: map[uint32][2]uint32{}, strides: map[view]uint32{},
-		binds: map[view]*dxbc.Binding{}, elems: map[view]*dxbc.Type{}}
+		binds: map[view]*t7dxbc.Binding{}, elems: map[view]*t7dxbc.Type{}}
 	m.readReflection(ref)
 	for i := range p.Instructions {
 		in := &p.Instructions[i]
@@ -72,31 +72,31 @@ func New(p *dxbc.Program, ref *dxbc.Reflection) (*Machine, error) {
 	return m, nil
 }
 
-func (m *Machine) readReflection(ref *dxbc.Reflection) {
-	buffers := map[string]*dxbc.Buffer{}
+func (m *Machine) readReflection(ref *t7dxbc.Reflection) {
+	buffers := map[string]*t7dxbc.Buffer{}
 	for i := range ref.Buffers {
 		buffers[ref.Buffers[i].Name] = &ref.Buffers[i]
 	}
 	for i := range ref.Bindings {
 		b := &ref.Bindings[i]
-		t := dxbc.OperandResource
+		t := t7dxbc.OperandResource
 		switch {
-		case b.Input == dxbc.InputCBuffer || b.Input == dxbc.InputSampler:
+		case b.Input == t7dxbc.InputCBuffer || b.Input == t7dxbc.InputSampler:
 			continue
 		case b.Input.IsUAV():
-			t = dxbc.OperandUAV
+			t = t7dxbc.OperandUAV
 		}
 		for k := range max(b.Count, 1) {
 			v := view{t, b.Point + k}
 			m.binds[v] = b
-			if buf := buffers[b.Name]; buf != nil && buf.Kind == dxbc.ResourceBindInfo && len(buf.Vars) == 1 {
+			if buf := buffers[b.Name]; buf != nil && buf.Kind == t7dxbc.ResourceBindInfo && len(buf.Vars) == 1 {
 				m.elems[v] = buf.Vars[0].Type
 			}
 		}
 	}
 }
 
-func (m *Machine) declare(in *dxbc.Instruction) {
+func (m *Machine) declare(in *t7dxbc.Instruction) {
 	reg := func() uint32 {
 		if len(in.Operands) == 0 || len(in.Operands[0].Index) == 0 {
 			return 0
@@ -110,25 +110,25 @@ func (m *Machine) declare(in *dxbc.Instruction) {
 		return 0
 	}
 	switch in.Op {
-	case dxbc.OpCustomdata:
-		if in.CustomdataClass() == dxbc.CustomdataICB {
+	case t7dxbc.OpCustomdata:
+		if in.CustomdataClass() == t7dxbc.CustomdataICB {
 			m.icb = in.Payload
 		}
-	case dxbc.OpDclTemps:
+	case t7dxbc.OpDclTemps:
 		m.temps = int(pay(0))
-	case dxbc.OpDclIndexableTemp:
+	case t7dxbc.OpDclIndexableTemp:
 		m.idx[pay(0)] = pay(1)
-	case dxbc.OpDclThreadGroupSharedMemoryRaw:
+	case t7dxbc.OpDclThreadGroupSharedMemoryRaw:
 		m.tgsm[reg()] = [2]uint32{0, pay(0) / 4}
-	case dxbc.OpDclThreadGroupSharedMemoryStructured:
+	case t7dxbc.OpDclThreadGroupSharedMemoryStructured:
 		m.tgsm[reg()] = [2]uint32{pay(0), pay(0) / 4 * pay(1)}
-	case dxbc.OpDclResourceStructured:
-		m.strides[view{dxbc.OperandResource, reg()}] = pay(0)
-	case dxbc.OpDclUnorderedAccessViewStructured:
-		m.strides[view{dxbc.OperandUAV, reg()}] = pay(0)
-	case dxbc.OpDclThreadGroup:
+	case t7dxbc.OpDclResourceStructured:
+		m.strides[view{t7dxbc.OperandResource, reg()}] = pay(0)
+	case t7dxbc.OpDclUnorderedAccessViewStructured:
+		m.strides[view{t7dxbc.OperandUAV, reg()}] = pay(0)
+	case t7dxbc.OpDclThreadGroup:
 		m.group = [3]uint32{pay(0), pay(1), pay(2)}
-	case dxbc.OpDclInput, dxbc.OpDclInputSiv, dxbc.OpDclInputSgv:
+	case t7dxbc.OpDclInput, t7dxbc.OpDclInputSiv, t7dxbc.OpDclInputSgv:
 		if len(in.Operands) > 0 && len(in.Operands[0].Index) == 2 {
 			m.vertices = int(in.Operands[0].Index[0].Imm)
 		}
@@ -149,17 +149,17 @@ type caseAt struct {
 }
 
 type frame struct {
-	op     dxbc.Opcode
+	op     t7dxbc.Opcode
 	start  int
 	elseAt int
 	breaks []int
 	conts  []int
 }
 
-func newFlow(body []dxbc.Instruction) (flow, error) {
+func newFlow(body []t7dxbc.Instruction) (flow, error) {
 	f := flow{jump: map[int]int{}, cases: map[int][]caseAt{}, end: map[int]int{}}
 	var stack []*frame
-	top := func(ops ...dxbc.Opcode) *frame {
+	top := func(ops ...t7dxbc.Opcode) *frame {
 		for i := len(stack) - 1; i >= 0; i-- {
 			for _, op := range ops {
 				if stack[i].op == op {
@@ -172,24 +172,24 @@ func newFlow(body []dxbc.Instruction) (flow, error) {
 	for i := range body {
 		in := &body[i]
 		switch in.Op {
-		case dxbc.OpIf, dxbc.OpLoop, dxbc.OpSwitch:
+		case t7dxbc.OpIf, t7dxbc.OpLoop, t7dxbc.OpSwitch:
 			stack = append(stack, &frame{op: in.Op, start: i, elseAt: -1})
 			continue
-		case dxbc.OpElse, dxbc.OpEndif, dxbc.OpEndloop, dxbc.OpEndswitch, dxbc.OpCase, dxbc.OpDefault:
+		case t7dxbc.OpElse, t7dxbc.OpEndif, t7dxbc.OpEndloop, t7dxbc.OpEndswitch, t7dxbc.OpCase, t7dxbc.OpDefault:
 			if err := f.close(stack, i, in); err != nil {
 				return f, err
 			}
-			if in.Op == dxbc.OpEndif || in.Op == dxbc.OpEndloop || in.Op == dxbc.OpEndswitch {
+			if in.Op == t7dxbc.OpEndif || in.Op == t7dxbc.OpEndloop || in.Op == t7dxbc.OpEndswitch {
 				stack = stack[:len(stack)-1]
 			}
-		case dxbc.OpBreak, dxbc.OpBreakc:
-			fr := top(dxbc.OpLoop, dxbc.OpSwitch)
+		case t7dxbc.OpBreak, t7dxbc.OpBreakc:
+			fr := top(t7dxbc.OpLoop, t7dxbc.OpSwitch)
 			if fr == nil {
 				return f, fmt.Errorf("instruction %d: break outside a loop or switch", i)
 			}
 			fr.breaks = append(fr.breaks, i)
-		case dxbc.OpContinue, dxbc.OpContinuec:
-			fr := top(dxbc.OpLoop)
+		case t7dxbc.OpContinue, t7dxbc.OpContinuec:
+			fr := top(t7dxbc.OpLoop)
 			if fr == nil {
 				return f, fmt.Errorf("instruction %d: continue outside a loop", i)
 			}
@@ -204,27 +204,27 @@ func newFlow(body []dxbc.Instruction) (flow, error) {
 
 // close records where the block on top of the stack goes when instruction i
 // ends or splits it.
-func (f *flow) close(stack []*frame, i int, in *dxbc.Instruction) error {
+func (f *flow) close(stack []*frame, i int, in *t7dxbc.Instruction) error {
 	if len(stack) == 0 {
 		return fmt.Errorf("instruction %d: %s outside a block", i, in.Op.Name())
 	}
 	fr := stack[len(stack)-1]
-	want := map[dxbc.Opcode]dxbc.Opcode{dxbc.OpElse: dxbc.OpIf, dxbc.OpEndif: dxbc.OpIf, dxbc.OpEndloop: dxbc.OpLoop,
-		dxbc.OpEndswitch: dxbc.OpSwitch, dxbc.OpCase: dxbc.OpSwitch, dxbc.OpDefault: dxbc.OpSwitch}[in.Op]
+	want := map[t7dxbc.Opcode]t7dxbc.Opcode{t7dxbc.OpElse: t7dxbc.OpIf, t7dxbc.OpEndif: t7dxbc.OpIf, t7dxbc.OpEndloop: t7dxbc.OpLoop,
+		t7dxbc.OpEndswitch: t7dxbc.OpSwitch, t7dxbc.OpCase: t7dxbc.OpSwitch, t7dxbc.OpDefault: t7dxbc.OpSwitch}[in.Op]
 	if fr.op != want {
 		return fmt.Errorf("instruction %d: %s closes a %s", i, in.Op.Name(), fr.op.Name())
 	}
 	switch in.Op {
-	case dxbc.OpElse:
+	case t7dxbc.OpElse:
 		fr.elseAt = i
 		f.jump[fr.start] = i
-	case dxbc.OpEndif:
+	case t7dxbc.OpEndif:
 		if fr.elseAt >= 0 {
 			f.jump[fr.elseAt] = i
 		} else {
 			f.jump[fr.start] = i
 		}
-	case dxbc.OpEndloop:
+	case t7dxbc.OpEndloop:
 		f.jump[i] = fr.start
 		for _, b := range fr.breaks {
 			f.jump[b] = i + 1
@@ -232,18 +232,18 @@ func (f *flow) close(stack []*frame, i int, in *dxbc.Instruction) error {
 		for _, c := range fr.conts {
 			f.jump[c] = fr.start
 		}
-	case dxbc.OpEndswitch:
+	case t7dxbc.OpEndswitch:
 		f.end[fr.start] = i
 		for _, b := range fr.breaks {
 			f.jump[b] = i + 1
 		}
-	case dxbc.OpCase:
+	case t7dxbc.OpCase:
 		var v uint32
 		if len(in.Operands) > 0 && len(in.Operands[0].Immediate) > 0 {
 			v = in.Operands[0].Immediate[0]
 		}
 		f.cases[fr.start] = append(f.cases[fr.start], caseAt{value: v, pc: i})
-	case dxbc.OpDefault:
+	case t7dxbc.OpDefault:
 		f.cases[fr.start] = append(f.cases[fr.start], caseAt{pc: i, isDefault: true})
 	}
 	return nil

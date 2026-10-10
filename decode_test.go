@@ -1,4 +1,4 @@
-package dxbc
+package t7dxbc
 
 import (
 	"encoding/binary"

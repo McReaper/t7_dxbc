@@ -1,4 +1,4 @@
-// Package dxbc reads compiled Direct3D 10/11 shaders (DXBC, Shader Model 4
+// Package t7dxbc reads compiled Direct3D 10/11 shaders (DXBC, Shader Model 4
 // and 5) and writes them back as HLSL.
 //
 // A DXBC file is a container of chunks: RDEF (resources and constant
@@ -55,4 +55,4 @@
 // shaders the compiler builds from generated HLSL (pixel, compute, and
 // signatures packed by random interpolation modes and arrays), and, opt in, a
 // whole shader cache (TestCorpusAgrees).
-package dxbc
+package t7dxbc

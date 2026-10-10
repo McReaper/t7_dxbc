@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/McReaper/dxbc"
+	"github.com/McReaper/t7dxbc"
 )
 
 // src reads a source operand's four components through its swizzle, without
 // its modifier, which depends on the instruction's type.
-func (t *thread) src(op *dxbc.Operand) Value {
+func (t *thread) src(op *t7dxbc.Operand) Value {
 	v := t.load(op)
 	switch {
 	case op.Components == 1:
 		return Value{v[0], v[0], v[0], v[0]}
-	case op.Selection == dxbc.SelectSwizzle:
+	case op.Selection == t7dxbc.SelectSwizzle:
 		return Value{v[op.Swizzle[0]&3], v[op.Swizzle[1]&3], v[op.Swizzle[2]&3], v[op.Swizzle[3]&3]}
-	case op.Selection == dxbc.SelectOne:
+	case op.Selection == t7dxbc.SelectOne:
 		c := v[op.Swizzle[0]&3]
 		return Value{c, c, c, c}
 	}
@@ -25,7 +25,7 @@ func (t *thread) src(op *dxbc.Operand) Value {
 
 // index is one of an operand's indices: its immediate plus its relative
 // register's value.
-func (t *thread) index(op *dxbc.Operand, i int) int64 {
+func (t *thread) index(op *t7dxbc.Operand, i int) int64 {
 	if i >= len(op.Index) {
 		return 0
 	}
@@ -38,29 +38,29 @@ func (t *thread) index(op *dxbc.Operand, i int) int64 {
 
 // load reads a register's four components, before any swizzle. What lies out
 // of range reads 0, as on the hardware.
-func (t *thread) load(op *dxbc.Operand) Value {
+func (t *thread) load(op *t7dxbc.Operand) Value {
 	switch op.Type {
-	case dxbc.OperandTemp:
+	case t7dxbc.OperandTemp:
 		if i := t.index(op, 0); i >= 0 && i < int64(len(t.r)) {
 			return t.r[i]
 		}
-	case dxbc.OperandInput:
+	case t7dxbc.OperandInput:
 		if len(op.Index) == 2 { // a geometry shader's v[vertex][register]
 			return t.in[VertexInput(uint32(t.index(op, 0)), uint32(t.index(op, 1)))]
 		}
 		return t.in[uint32(t.index(op, 0))]
-	case dxbc.OperandIndexableTemp:
+	case t7dxbc.OperandIndexableTemp:
 		arr := t.x[uint32(t.index(op, 0))]
 		if i := t.index(op, 1); i >= 0 && i < int64(len(arr)) {
 			return arr[i]
 		}
-	case dxbc.OperandImmediate32:
+	case t7dxbc.OperandImmediate32:
 		var v Value
 		copy(v[:], op.Immediate)
 		return v
-	case dxbc.OperandCBuffer:
+	case t7dxbc.OperandCBuffer:
 		return dwords(t.w.CB[uint32(t.index(op, 0))], t.index(op, 1)*4)
-	case dxbc.OperandICB:
+	case t7dxbc.OperandICB:
 		return dwords(t.m.icb, t.index(op, 0)*4)
 	default:
 		return t.sys[op.Type]
@@ -80,15 +80,15 @@ func dwords(d []uint32, at int64) Value {
 }
 
 // mask is the components a destination writes.
-func mask(op *dxbc.Operand) uint8 {
-	if op.Components == 4 && op.Selection == dxbc.SelectMask {
+func mask(op *t7dxbc.Operand) uint8 {
+	if op.Components == 4 && op.Selection == t7dxbc.SelectMask {
 		return op.Mask
 	}
 	return 1
 }
 
 // store writes the destination's components of v, saturated if asked.
-func (t *thread) store(op *dxbc.Operand, v Value, sat bool) error {
+func (t *thread) store(op *t7dxbc.Operand, v Value, sat bool) error {
 	if sat {
 		for i := range v {
 			v[i] = saturate(v[i])
@@ -103,18 +103,18 @@ func (t *thread) store(op *dxbc.Operand, v Value, sat bool) error {
 		}
 	}
 	switch op.Type {
-	case dxbc.OperandNull:
-	case dxbc.OperandTemp:
+	case t7dxbc.OperandNull:
+	case t7dxbc.OperandTemp:
 		i := t.index(op, 0)
 		if i < 0 || i >= int64(len(t.r)) {
 			return fmt.Errorf("r%d out of range", i)
 		}
 		put(&t.r[i])
-	case dxbc.OperandOutput:
+	case t7dxbc.OperandOutput:
 		o := t.res.Outputs[uint32(t.index(op, 0))]
 		put(&o)
 		t.res.Outputs[uint32(t.index(op, 0))] = o
-	case dxbc.OperandIndexableTemp:
+	case t7dxbc.OperandIndexableTemp:
 		arr := t.x[uint32(t.index(op, 0))]
 		if i := t.index(op, 1); i >= 0 && i < int64(len(arr)) {
 			put(&arr[i])
@@ -141,17 +141,17 @@ func saturate(b uint32) uint32 {
 }
 
 // fsrc reads a float operand with its modifier, denormals flushed to zero.
-func (t *thread) fsrc(op *dxbc.Operand) [4]float32 {
+func (t *thread) fsrc(op *t7dxbc.Operand) [4]float32 {
 	v := t.src(op)
 	var f [4]float32
 	for i, b := range v {
 		b = flush(b)
 		switch op.Modifier {
-		case dxbc.ModAbs:
+		case t7dxbc.ModAbs:
 			b &^= 1 << 31
-		case dxbc.ModNeg:
+		case t7dxbc.ModNeg:
 			b ^= 1 << 31
-		case dxbc.ModAbsNeg:
+		case t7dxbc.ModAbsNeg:
 			b |= 1 << 31
 		}
 		f[i] = math.Float32frombits(b)
@@ -161,9 +161,9 @@ func (t *thread) fsrc(op *dxbc.Operand) [4]float32 {
 
 // isrc reads an integer operand with its modifier: neg is the two's
 // complement.
-func (t *thread) isrc(op *dxbc.Operand) Value {
+func (t *thread) isrc(op *t7dxbc.Operand) Value {
 	v := t.src(op)
-	if op.Modifier == dxbc.ModNeg {
+	if op.Modifier == t7dxbc.ModNeg {
 		for i := range v {
 			v[i] = -v[i]
 		}

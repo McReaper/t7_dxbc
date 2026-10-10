@@ -15,8 +15,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/McReaper/dxbc"
-	"github.com/McReaper/dxbc/internal/oracle"
+	"github.com/McReaper/t7dxbc"
+	"github.com/McReaper/t7dxbc/internal/oracle"
 )
 
 // runs is how many random inputs each shader is checked on.
@@ -25,24 +25,24 @@ const runs = 12
 // shader is a compiled shader, read.
 type shader struct {
 	code    []byte
-	p       *dxbc.Program
-	ref     *dxbc.Reflection
-	in, out []dxbc.Element
+	p       *t7dxbc.Program
+	ref     *t7dxbc.Reflection
+	in, out []t7dxbc.Element
 	m       *Machine
 }
 
 func readShader(code []byte) (*shader, error) {
-	c, err := dxbc.Parse(code)
+	c, err := t7dxbc.Parse(code)
 	if err != nil {
 		return nil, err
 	}
-	p, err := dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
+	p, err := t7dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
 	if err != nil {
 		return nil, err
 	}
-	ref := &dxbc.Reflection{}
+	ref := &t7dxbc.Reflection{}
 	if rdef := c.Chunk("RDEF"); rdef != nil {
-		if ref, err = dxbc.ReadReflection(rdef); err != nil {
+		if ref, err = t7dxbc.ReadReflection(rdef); err != nil {
 			return nil, err
 		}
 	}
@@ -109,15 +109,15 @@ func (s *shader) run(seed uint32, counting bool) (outcome, error) {
 		w = NewCountingWorld(s.ref, seed)
 	}
 	o := outcome{values: map[string]uint32{}}
-	if s.p.Stage == dxbc.StageCompute {
+	if s.p.Stage == t7dxbc.StageCompute {
 		if err := s.m.RunGroup(w, [3]uint32{seed % 3, seed % 2, 0}); err != nil {
 			return o, err
 		}
 	} else {
-		sys := map[dxbc.OperandType]Value{
-			dxbc.OperandPrimitiveID:   {3 + seed%7},
-			dxbc.OperandGSInstanceID:  {seed % 2},
-			dxbc.OperandInputCoverage: {0xF ^ seed%4},
+		sys := map[t7dxbc.OperandType]Value{
+			t7dxbc.OperandPrimitiveID:   {3 + seed%7},
+			t7dxbc.OperandGSInstanceID:  {seed % 2},
+			t7dxbc.OperandInputCoverage: {0xF ^ seed%4},
 		}
 		r, err := s.m.Run(w, s.inputs(seed), sys)
 		if err != nil {
@@ -146,7 +146,7 @@ func (s *shader) run(seed uint32, counting bool) (outcome, error) {
 // primitive's vertices.
 func (s *shader) inputs(seed uint32) map[uint32]Value {
 	n := s.m.InputVertices()
-	if s.p.Stage != dxbc.StageGeometry || n == 0 {
+	if s.p.Stage != t7dxbc.StageGeometry || n == 0 {
 		return Inputs(s.in, seed)
 	}
 	in := map[uint32]Value{}
@@ -162,7 +162,7 @@ func (s *shader) inputs(seed uint32) map[uint32]Value {
 // they hold.
 func (s *shader) outputs(values map[string]uint32, prefix string, out map[uint32]Value) {
 	for _, el := range s.out {
-		if el.Register == dxbc.NoRegister {
+		if el.Register == t7dxbc.NoRegister {
 			continue
 		}
 		for c := range 4 {

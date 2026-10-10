@@ -1,4 +1,4 @@
-package dxbc
+package t7dxbc
 
 // VarClass is D3D_SHADER_VARIABLE_CLASS.
 type VarClass uint16

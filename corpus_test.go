@@ -1,6 +1,6 @@
 //go:build windows
 
-package dxbc
+package t7dxbc
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/dxbc/internal/d3dc"
+	"github.com/McReaper/t7dxbc/internal/d3dc"
 )
 
 // corpus is the opt-in real-data oracle: every DXBC file in $DXBC_CORPUS (a

@@ -4,33 +4,33 @@ import (
 	"math"
 	"strings"
 
-	"github.com/McReaper/dxbc"
+	"github.com/McReaper/t7dxbc"
 )
 
 // NewWorld fills a shader's constant buffers from a seed: each variable with
 // values of its type, floats in [-1, 2], integers in [0, 8), bools 0 or 1.
-func NewWorld(ref *dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, false) }
+func NewWorld(ref *t7dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, false) }
 
 // NewCountingWorld fills a shader's constant buffers as NewWorld does, but
 // with integers in [0, 8) in the float variables too: a program that reads a
 // loop count from one (asuint) ends.
-func NewCountingWorld(ref *dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, true) }
+func NewCountingWorld(ref *t7dxbc.Reflection, seed uint32) *World { return newWorld(ref, seed, true) }
 
-func newWorld(ref *dxbc.Reflection, seed uint32, counting bool) *World {
+func newWorld(ref *t7dxbc.Reflection, seed uint32, counting bool) *World {
 	w := &World{CB: map[uint32][]uint32{}, Seed: seed, UAV: map[Cell]uint32{}, counters: map[uint32]uint32{},
 		counting: counting}
-	buffers := map[string]*dxbc.Buffer{}
+	buffers := map[string]*t7dxbc.Buffer{}
 	for i := range ref.Buffers {
 		buffers[ref.Buffers[i].Name] = &ref.Buffers[i]
 	}
 	for _, b := range ref.Bindings {
 		buf := buffers[b.Name]
-		if b.Input != dxbc.InputCBuffer || buf == nil {
+		if b.Input != t7dxbc.InputCBuffer || buf == nil {
 			continue
 		}
 		d := make([]uint32, (buf.Size+15)/16*4)
 		for i := range d {
-			d[i] = w.value(dxbc.TypeFloat, b.Point, uint32(i))
+			d[i] = w.value(t7dxbc.TypeFloat, b.Point, uint32(i))
 		}
 		for _, v := range buf.Vars {
 			w.fill(d, v.Offset, v.Type, b.Point)
@@ -41,13 +41,13 @@ func newWorld(ref *dxbc.Reflection, seed uint32, counting bool) *World {
 }
 
 // value is a constant of a base type.
-func (w *World) value(t dxbc.VarType, slot, at uint32) uint32 {
+func (w *World) value(t t7dxbc.VarType, slot, at uint32) uint32 {
 	h := w.mix(0xCB, slot, at)
 	switch {
-	case t == dxbc.TypeBool:
+	case t == t7dxbc.TypeBool:
 		return h % 2
-	case w.counting, t == dxbc.TypeInt, t == dxbc.TypeUint, t == dxbc.TypeUint8, t == dxbc.TypeMin16Int,
-		t == dxbc.TypeMin12Int, t == dxbc.TypeMin16Uint:
+	case w.counting, t == t7dxbc.TypeInt, t == t7dxbc.TypeUint, t == t7dxbc.TypeUint8, t == t7dxbc.TypeMin16Int,
+		t == t7dxbc.TypeMin12Int, t == t7dxbc.TypeMin16Uint:
 		return h % 8
 	}
 	return math.Float32bits(float32(h%3001)/1000 - 1)
@@ -56,7 +56,7 @@ func (w *World) value(t dxbc.VarType, slot, at uint32) uint32 {
 // fill writes the values of a variable of type t at byte offset off, in a
 // constant buffer's layout: each array element and matrix line starts a
 // register.
-func (w *World) fill(d []uint32, off uint32, t *dxbc.Type, slot uint32) {
+func (w *World) fill(d []uint32, off uint32, t *t7dxbc.Type, slot uint32) {
 	if t.Elements > 0 {
 		e := *t
 		e.Elements = 0
@@ -72,15 +72,15 @@ func (w *World) fill(d []uint32, off uint32, t *dxbc.Type, slot uint32) {
 		}
 	}
 	switch t.Class {
-	case dxbc.ClassScalar:
+	case t7dxbc.ClassScalar:
 		put(off)
-	case dxbc.ClassVector:
+	case t7dxbc.ClassVector:
 		for c := range uint32(t.Cols) {
 			put(off + 4*c)
 		}
-	case dxbc.ClassMatrixRows, dxbc.ClassMatrixColumns:
+	case t7dxbc.ClassMatrixRows, t7dxbc.ClassMatrixColumns:
 		lines, n := uint32(t.Rows), uint32(t.Cols)
-		if t.Class == dxbc.ClassMatrixColumns {
+		if t.Class == t7dxbc.ClassMatrixColumns {
 			lines, n = n, lines
 		}
 		for l := range lines {
@@ -88,7 +88,7 @@ func (w *World) fill(d []uint32, off uint32, t *dxbc.Type, slot uint32) {
 				put(off + 16*l + 4*c)
 			}
 		}
-	case dxbc.ClassStruct:
+	case t7dxbc.ClassStruct:
 		for _, m := range t.Members {
 			w.fill(d, off+m.Offset, m.Type, slot)
 		}
@@ -96,20 +96,20 @@ func (w *World) fill(d []uint32, off uint32, t *dxbc.Type, slot uint32) {
 }
 
 // packedSize is a type's size in a constant buffer, its last line unpadded.
-func packedSize(t *dxbc.Type) uint32 {
+func packedSize(t *t7dxbc.Type) uint32 {
 	var one uint32
 	switch t.Class {
-	case dxbc.ClassScalar:
+	case t7dxbc.ClassScalar:
 		one = 4
-	case dxbc.ClassVector:
+	case t7dxbc.ClassVector:
 		one = 4 * uint32(t.Cols)
-	case dxbc.ClassMatrixRows, dxbc.ClassMatrixColumns:
+	case t7dxbc.ClassMatrixRows, t7dxbc.ClassMatrixColumns:
 		lines, n := uint32(t.Rows), uint32(t.Cols)
-		if t.Class == dxbc.ClassMatrixColumns {
+		if t.Class == t7dxbc.ClassMatrixColumns {
 			lines, n = n, lines
 		}
 		one = 16*(lines-1) + 4*n
-	case dxbc.ClassStruct:
+	case t7dxbc.ClassStruct:
 		for _, m := range t.Members {
 			one = max(one, m.Offset+packedSize(m.Type))
 		}
@@ -124,11 +124,11 @@ func packedSize(t *dxbc.Type) uint32 {
 // signature with values of its type and meaning. A position is a pixel's,
 // texture coordinates are in [0, 1], other floats in [-1, 1], integers in
 // [0, 8), the front face is either.
-func Inputs(sig []dxbc.Element, seed uint32) map[uint32]Value {
+func Inputs(sig []t7dxbc.Element, seed uint32) map[uint32]Value {
 	w := &World{Seed: seed}
 	in := map[uint32]Value{}
 	for _, el := range sig {
-		if el.Register == dxbc.NoRegister {
+		if el.Register == t7dxbc.NoRegister {
 			continue
 		}
 		v := in[el.Register]
@@ -143,13 +143,13 @@ func Inputs(sig []dxbc.Element, seed uint32) map[uint32]Value {
 	return in
 }
 
-func (w *World) input(el dxbc.Element, c uint32) uint32 {
+func (w *World) input(el t7dxbc.Element, c uint32) uint32 {
 	h := w.mix(0x1B, el.Register, c)
 	name := strings.ToUpper(el.Name)
 	switch {
 	case name == "SV_ISFRONTFACE":
 		return mask32(h%2 == 0)
-	case el.Type != dxbc.ComponentFloat:
+	case el.Type != t7dxbc.ComponentFloat:
 		return h % 8
 	case name == "SV_POSITION" && c < 2:
 		return math.Float32bits(float32(h%1900) + 0.5)

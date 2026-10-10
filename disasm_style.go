@@ -1,4 +1,4 @@
-package dxbc
+package t7dxbc
 
 // The number style of each opcode's immediates: the type of its operands.
 // An opcode not listed is typeless (mov, movc, the loads' addresses…).

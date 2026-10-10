@@ -1,4 +1,4 @@
-package dxbc
+package t7dxbc
 
 // An instruction's opcode token and extended tokens carry its controls. The
 // disassembler, checked against Microsoft's on whole shader caches, writes

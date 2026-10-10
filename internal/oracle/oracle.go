@@ -14,28 +14,28 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/McReaper/dxbc"
-	"github.com/McReaper/dxbc/internal/d3dc"
+	"github.com/McReaper/t7dxbc"
+	"github.com/McReaper/t7dxbc/internal/d3dc"
 )
 
 // Available reports whether the compiler can be loaded.
 func Available() bool { return d3dc.Available() }
 
-var targets = map[dxbc.Stage]string{dxbc.StagePixel: "ps", dxbc.StageVertex: "vs", dxbc.StageCompute: "cs",
-	dxbc.StageGeometry: "gs"}
+var targets = map[t7dxbc.Stage]string{t7dxbc.StagePixel: "ps", t7dxbc.StageVertex: "vs", t7dxbc.StageCompute: "cs",
+	t7dxbc.StageGeometry: "gs"}
 
 // Recompile decompiles a shader and compiles the HLSL again for the same
 // target. Its error says which step failed: "decompile: …" or "compile: …".
 func Recompile(code []byte) (src string, out []byte, err error) {
-	src, err = dxbc.Decompile(code)
+	src, err = t7dxbc.Decompile(code)
 	if err != nil {
 		return src, nil, fmt.Errorf("decompile: %w", err)
 	}
-	c, err := dxbc.Parse(code)
+	c, err := t7dxbc.Parse(code)
 	if err != nil {
 		return src, nil, fmt.Errorf("decompile: %w", err)
 	}
-	p, err := dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
+	p, err := t7dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
 	if err != nil {
 		return src, nil, fmt.Errorf("decompile: %w", err)
 	}
@@ -64,13 +64,13 @@ type Interface struct {
 // InterfaceOf reads a compiled shader's interface.
 func InterfaceOf(code []byte) (Interface, error) {
 	var s Interface
-	c, err := dxbc.Parse(code)
+	c, err := t7dxbc.Parse(code)
 	if err != nil {
 		return s, err
 	}
-	ref := &dxbc.Reflection{}
+	ref := &t7dxbc.Reflection{}
 	if rdef := c.Chunk("RDEF"); rdef != nil {
-		if ref, err = dxbc.ReadReflection(rdef); err != nil {
+		if ref, err = t7dxbc.ReadReflection(rdef); err != nil {
 			return s, err
 		}
 	}
@@ -78,7 +78,7 @@ func InterfaceOf(code []byte) (Interface, error) {
 		s.Buffers = append(s.Buffers, fmt.Sprintf("%s kind=%d size=%d", b.Name, b.Kind, b.Size))
 		for _, v := range b.Vars {
 			s.Buffers = append(s.Buffers, fmt.Sprintf("  %s %s @%d+%d used=%v", v.Type.HLSLName(), v.Name, v.Offset,
-				v.Size, v.Flags&dxbc.VariableUsed != 0))
+				v.Size, v.Flags&t7dxbc.VariableUsed != 0))
 		}
 	}
 	for _, b := range ref.Bindings {
@@ -90,7 +90,7 @@ func InterfaceOf(code []byte) (Interface, error) {
 		return s, err
 	}
 	s.Inputs, s.Outputs = signature(in), signature(out)
-	p, err := dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
+	p, err := t7dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
 	if err != nil {
 		return s, err
 	}
@@ -98,11 +98,11 @@ func InterfaceOf(code []byte) (Interface, error) {
 	return s, nil
 }
 
-func signature(els []dxbc.Element) []string {
+func signature(els []t7dxbc.Element) []string {
 	var rows []string
 	for _, el := range els {
 		rows = append(rows, fmt.Sprintf("%s%d %v %v r%d %s", el.Name, el.Index, el.SystemValue, el.Type, el.Register,
-			dxbc.MaskString(el.Mask)))
+			t7dxbc.MaskString(el.Mask)))
 	}
 	return rows
 }
@@ -111,20 +111,20 @@ func signature(els []dxbc.Element) []string {
 // reflection, as the disassembler writes them, and the kinds of barrier. An
 // input declaration keeps only its register and interpolation mode, as the
 // components it lists follow what the code reads.
-func programDeclarations(p *dxbc.Program) (decls, barriers []string) {
+func programDeclarations(p *t7dxbc.Program) (decls, barriers []string) {
 	seen := map[string]bool{}
 	for i := range p.Instructions {
 		in := &p.Instructions[i]
 		switch in.Op {
-		case dxbc.OpDclUnorderedAccessViewTyped, dxbc.OpDclUnorderedAccessViewRaw, dxbc.OpDclUnorderedAccessViewStructured,
-			dxbc.OpDclResource, dxbc.OpDclResourceRaw, dxbc.OpDclResourceStructured, dxbc.OpDclSampler,
-			dxbc.OpDclGlobalFlags:
+		case t7dxbc.OpDclUnorderedAccessViewTyped, t7dxbc.OpDclUnorderedAccessViewRaw, t7dxbc.OpDclUnorderedAccessViewStructured,
+			t7dxbc.OpDclResource, t7dxbc.OpDclResourceRaw, t7dxbc.OpDclResourceStructured, t7dxbc.OpDclSampler,
+			t7dxbc.OpDclGlobalFlags:
 			decls = append(decls, in.Disassemble())
-		case dxbc.OpDclInputPs, dxbc.OpDclInputPsSiv, dxbc.OpDclInputPsSgv:
+		case t7dxbc.OpDclInputPs, t7dxbc.OpDclInputPsSiv, t7dxbc.OpDclInputPsSgv:
 			if len(in.Operands) > 0 && len(in.Operands[0].Index) > 0 {
 				decls = append(decls, fmt.Sprintf("v%d mode %d", in.Operands[0].Index[0].Imm, in.InterpolationMode()))
 			}
-		case dxbc.OpSync:
+		case t7dxbc.OpSync:
 			if m := in.Disassemble(); !seen[m] {
 				seen[m] = true
 				barriers = append(barriers, m)

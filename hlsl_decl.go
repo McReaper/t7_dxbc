@@ -1,4 +1,4 @@
-package dxbc
+package t7dxbc
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 // declarations writes the structs, constant buffers, resources, samplers,
 // UAVs, the immediate constant buffer and the group-shared memory.
 func (e *emitter) declarations() {
-	e.line("// Decompiled by github.com/McReaper/dxbc")
+	e.line("// Decompiled by github.com/McReaper/t7dxbc")
 	e.line("")
 	e.structDecls()
 	// in the reflection's order, which the compiler keeps from the source

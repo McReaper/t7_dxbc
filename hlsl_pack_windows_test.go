@@ -1,6 +1,6 @@
 //go:build windows
 
-package dxbc
+package t7dxbc
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/dxbc/internal/d3dc"
+	"github.com/McReaper/t7dxbc/internal/d3dc"
 )
 
 // The compiler packs each case's declarations as its signature says: they

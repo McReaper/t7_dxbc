@@ -4,21 +4,21 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/McReaper/dxbc"
+	"github.com/McReaper/t7dxbc"
 )
 
 // opFn runs an instruction that isn't control flow.
-type opFn func(t *thread, in *dxbc.Instruction) error
+type opFn func(t *thread, in *t7dxbc.Instruction) error
 
 // ops are the simulated instructions; resource ones are added by init.
-var ops = map[dxbc.Opcode]opFn{}
+var ops = map[t7dxbc.Opcode]opFn{}
 
-func sat(in *dxbc.Instruction) bool { return in.Saturate() }
+func sat(in *t7dxbc.Instruction) bool { return in.Saturate() }
 
 // float1, float2 and float3 build float instructions from what they do to
 // one component.
 func float1(f func(a float32) float32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a := t.fsrc(&in.Operands[1])
 		var v Value
 		for i := range v {
@@ -29,7 +29,7 @@ func float1(f func(a float32) float32) opFn {
 }
 
 func float2(f func(a, b float32) float32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b := t.fsrc(&in.Operands[1]), t.fsrc(&in.Operands[2])
 		var v Value
 		for i := range v {
@@ -40,7 +40,7 @@ func float2(f func(a, b float32) float32) opFn {
 }
 
 func float3(f func(a, b, c float32) float32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b, c := t.fsrc(&in.Operands[1]), t.fsrc(&in.Operands[2]), t.fsrc(&in.Operands[3])
 		var v Value
 		for i := range v {
@@ -52,7 +52,7 @@ func float3(f func(a, b, c float32) float32) opFn {
 
 // fcmp builds a float comparison: all bits set when it holds.
 func fcmp(f func(a, b float32) bool) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b := t.fsrc(&in.Operands[1]), t.fsrc(&in.Operands[2])
 		var v Value
 		for i := range v {
@@ -71,7 +71,7 @@ func mask32(b bool) uint32 {
 
 // int1, int2 and int3 build integer instructions.
 func int1(f func(a uint32) uint32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a := t.isrc(&in.Operands[1])
 		var v Value
 		for i := range v {
@@ -82,7 +82,7 @@ func int1(f func(a uint32) uint32) opFn {
 }
 
 func int2(f func(a, b uint32) uint32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b := t.isrc(&in.Operands[1]), t.isrc(&in.Operands[2])
 		var v Value
 		for i := range v {
@@ -93,7 +93,7 @@ func int2(f func(a, b uint32) uint32) opFn {
 }
 
 func int3(f func(a, b, c uint32) uint32) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b, c := t.isrc(&in.Operands[1]), t.isrc(&in.Operands[2]), t.isrc(&in.Operands[3])
 		var v Value
 		for i := range v {
@@ -119,47 +119,47 @@ func fmax(a, b float32) float32 {
 }
 
 func init() {
-	for op, f := range map[dxbc.Opcode]func(a float32) float32{
-		dxbc.OpFrc:  func(a float32) float32 { return a - float32(math.Floor(float64(a))) },
-		dxbc.OpRcp:  func(a float32) float32 { return 1 / a },
-		dxbc.OpRsq:  func(a float32) float32 { return float32(1 / math.Sqrt(float64(a))) },
-		dxbc.OpSqrt: func(a float32) float32 { return float32(math.Sqrt(float64(a))) },
-		dxbc.OpExp:  func(a float32) float32 { return float32(math.Exp2(float64(a))) },
-		dxbc.OpLog:  func(a float32) float32 { return float32(math.Log2(float64(a))) },
-		dxbc.OpRoundNe: func(a float32) float32 {
+	for op, f := range map[t7dxbc.Opcode]func(a float32) float32{
+		t7dxbc.OpFrc:  func(a float32) float32 { return a - float32(math.Floor(float64(a))) },
+		t7dxbc.OpRcp:  func(a float32) float32 { return 1 / a },
+		t7dxbc.OpRsq:  func(a float32) float32 { return float32(1 / math.Sqrt(float64(a))) },
+		t7dxbc.OpSqrt: func(a float32) float32 { return float32(math.Sqrt(float64(a))) },
+		t7dxbc.OpExp:  func(a float32) float32 { return float32(math.Exp2(float64(a))) },
+		t7dxbc.OpLog:  func(a float32) float32 { return float32(math.Log2(float64(a))) },
+		t7dxbc.OpRoundNe: func(a float32) float32 {
 			return float32(math.RoundToEven(float64(a)))
 		},
-		dxbc.OpRoundNi:        func(a float32) float32 { return float32(math.Floor(float64(a))) },
-		dxbc.OpRoundPi:        func(a float32) float32 { return float32(math.Ceil(float64(a))) },
-		dxbc.OpRoundZ:         func(a float32) float32 { return float32(math.Trunc(float64(a))) },
-		dxbc.OpDerivRtx:       zero1,
-		dxbc.OpDerivRty:       zero1,
-		dxbc.OpDerivRtxCoarse: zero1,
-		dxbc.OpDerivRtyCoarse: zero1,
-		dxbc.OpDerivRtxFine:   zero1,
-		dxbc.OpDerivRtyFine:   zero1,
+		t7dxbc.OpRoundNi:        func(a float32) float32 { return float32(math.Floor(float64(a))) },
+		t7dxbc.OpRoundPi:        func(a float32) float32 { return float32(math.Ceil(float64(a))) },
+		t7dxbc.OpRoundZ:         func(a float32) float32 { return float32(math.Trunc(float64(a))) },
+		t7dxbc.OpDerivRtx:       zero1,
+		t7dxbc.OpDerivRty:       zero1,
+		t7dxbc.OpDerivRtxCoarse: zero1,
+		t7dxbc.OpDerivRtyCoarse: zero1,
+		t7dxbc.OpDerivRtxFine:   zero1,
+		t7dxbc.OpDerivRtyFine:   zero1,
 	} {
 		ops[op] = float1(f)
 	}
-	for op, f := range map[dxbc.Opcode]func(a, b float32) float32{
-		dxbc.OpAdd: func(a, b float32) float32 { return a + b },
-		dxbc.OpMul: func(a, b float32) float32 { return a * b },
-		dxbc.OpDiv: func(a, b float32) float32 { return a / b },
-		dxbc.OpMin: fmin,
-		dxbc.OpMax: fmax,
+	for op, f := range map[t7dxbc.Opcode]func(a, b float32) float32{
+		t7dxbc.OpAdd: func(a, b float32) float32 { return a + b },
+		t7dxbc.OpMul: func(a, b float32) float32 { return a * b },
+		t7dxbc.OpDiv: func(a, b float32) float32 { return a / b },
+		t7dxbc.OpMin: fmin,
+		t7dxbc.OpMax: fmax,
 	} {
 		ops[op] = float2(f)
 	}
-	ops[dxbc.OpMad] = float3(func(a, b, c float32) float32 { return float32(a*b) + c })
-	for op, f := range map[dxbc.Opcode]func(a, b float32) bool{
-		dxbc.OpEq: func(a, b float32) bool { return a == b },
-		dxbc.OpNe: func(a, b float32) bool { return a != b },
-		dxbc.OpLt: func(a, b float32) bool { return a < b },
-		dxbc.OpGe: func(a, b float32) bool { return a >= b },
+	ops[t7dxbc.OpMad] = float3(func(a, b, c float32) float32 { return float32(a*b) + c })
+	for op, f := range map[t7dxbc.Opcode]func(a, b float32) bool{
+		t7dxbc.OpEq: func(a, b float32) bool { return a == b },
+		t7dxbc.OpNe: func(a, b float32) bool { return a != b },
+		t7dxbc.OpLt: func(a, b float32) bool { return a < b },
+		t7dxbc.OpGe: func(a, b float32) bool { return a >= b },
 	} {
 		ops[op] = fcmp(f)
 	}
-	for op, n := range map[dxbc.Opcode]int{dxbc.OpDp2: 2, dxbc.OpDp3: 3, dxbc.OpDp4: 4} {
+	for op, n := range map[t7dxbc.Opcode]int{t7dxbc.OpDp2: 2, t7dxbc.OpDp3: 3, t7dxbc.OpDp4: 4} {
 		ops[op] = dot(n)
 	}
 	initInts()
@@ -171,7 +171,7 @@ func zero1(float32) float32 { return 0 }
 
 // dot builds dp2, dp3 and dp4: the sum, in order, of the first n products.
 func dot(n int) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b := t.fsrc(&in.Operands[1]), t.fsrc(&in.Operands[2])
 		s := a[0] * b[0]
 		for i := 1; i < n; i++ {
@@ -183,68 +183,68 @@ func dot(n int) opFn {
 }
 
 func initInts() {
-	for op, f := range map[dxbc.Opcode]func(a, b uint32) uint32{
-		dxbc.OpIadd: func(a, b uint32) uint32 { return a + b },
-		dxbc.OpAnd:  func(a, b uint32) uint32 { return a & b },
-		dxbc.OpOr:   func(a, b uint32) uint32 { return a | b },
-		dxbc.OpXor:  func(a, b uint32) uint32 { return a ^ b },
-		dxbc.OpIshl: func(a, b uint32) uint32 { return a << (b & 31) },
-		dxbc.OpIshr: func(a, b uint32) uint32 { return uint32(int32(a) >> (b & 31)) },
-		dxbc.OpUshr: func(a, b uint32) uint32 { return a >> (b & 31) },
-		dxbc.OpIeq:  func(a, b uint32) uint32 { return mask32(a == b) },
-		dxbc.OpIne:  func(a, b uint32) uint32 { return mask32(a != b) },
-		dxbc.OpIlt:  func(a, b uint32) uint32 { return mask32(int32(a) < int32(b)) },
-		dxbc.OpIge:  func(a, b uint32) uint32 { return mask32(int32(a) >= int32(b)) },
-		dxbc.OpUlt:  func(a, b uint32) uint32 { return mask32(a < b) },
-		dxbc.OpUge:  func(a, b uint32) uint32 { return mask32(a >= b) },
-		dxbc.OpImin: func(a, b uint32) uint32 { return uint32(min(int32(a), int32(b))) },
-		dxbc.OpImax: func(a, b uint32) uint32 { return uint32(max(int32(a), int32(b))) },
-		dxbc.OpUmin: func(a, b uint32) uint32 { return min(a, b) },
-		dxbc.OpUmax: func(a, b uint32) uint32 { return max(a, b) },
+	for op, f := range map[t7dxbc.Opcode]func(a, b uint32) uint32{
+		t7dxbc.OpIadd: func(a, b uint32) uint32 { return a + b },
+		t7dxbc.OpAnd:  func(a, b uint32) uint32 { return a & b },
+		t7dxbc.OpOr:   func(a, b uint32) uint32 { return a | b },
+		t7dxbc.OpXor:  func(a, b uint32) uint32 { return a ^ b },
+		t7dxbc.OpIshl: func(a, b uint32) uint32 { return a << (b & 31) },
+		t7dxbc.OpIshr: func(a, b uint32) uint32 { return uint32(int32(a) >> (b & 31)) },
+		t7dxbc.OpUshr: func(a, b uint32) uint32 { return a >> (b & 31) },
+		t7dxbc.OpIeq:  func(a, b uint32) uint32 { return mask32(a == b) },
+		t7dxbc.OpIne:  func(a, b uint32) uint32 { return mask32(a != b) },
+		t7dxbc.OpIlt:  func(a, b uint32) uint32 { return mask32(int32(a) < int32(b)) },
+		t7dxbc.OpIge:  func(a, b uint32) uint32 { return mask32(int32(a) >= int32(b)) },
+		t7dxbc.OpUlt:  func(a, b uint32) uint32 { return mask32(a < b) },
+		t7dxbc.OpUge:  func(a, b uint32) uint32 { return mask32(a >= b) },
+		t7dxbc.OpImin: func(a, b uint32) uint32 { return uint32(min(int32(a), int32(b))) },
+		t7dxbc.OpImax: func(a, b uint32) uint32 { return uint32(max(int32(a), int32(b))) },
+		t7dxbc.OpUmin: func(a, b uint32) uint32 { return min(a, b) },
+		t7dxbc.OpUmax: func(a, b uint32) uint32 { return max(a, b) },
 	} {
 		ops[op] = int2(f)
 	}
-	for op, f := range map[dxbc.Opcode]func(a uint32) uint32{
-		dxbc.OpNot:         func(a uint32) uint32 { return ^a },
-		dxbc.OpIneg:        func(a uint32) uint32 { return -a },
-		dxbc.OpCountbits:   func(a uint32) uint32 { return uint32(bits.OnesCount32(a)) },
-		dxbc.OpBfrev:       bits.Reverse32,
-		dxbc.OpFirstbitLo:  firstbitLo,
-		dxbc.OpFirstbitHi:  firstbitHi,
-		dxbc.OpFirstbitShi: firstbitShi,
-		dxbc.OpF16tof32:    func(a uint32) uint32 { return fbits(halfToFloat(uint16(a))) },
-		dxbc.OpF32tof16:    func(a uint32) uint32 { return uint32(floatToHalf(math.Float32frombits(flush(a)))) },
-		dxbc.OpItof:        func(a uint32) uint32 { return fbits(float32(int32(a))) },
-		dxbc.OpUtof:        func(a uint32) uint32 { return fbits(float32(a)) },
-		dxbc.OpFtoi:        func(a uint32) uint32 { return ftoi(math.Float32frombits(flush(a))) },
-		dxbc.OpFtou:        func(a uint32) uint32 { return ftou(math.Float32frombits(flush(a))) },
+	for op, f := range map[t7dxbc.Opcode]func(a uint32) uint32{
+		t7dxbc.OpNot:         func(a uint32) uint32 { return ^a },
+		t7dxbc.OpIneg:        func(a uint32) uint32 { return -a },
+		t7dxbc.OpCountbits:   func(a uint32) uint32 { return uint32(bits.OnesCount32(a)) },
+		t7dxbc.OpBfrev:       bits.Reverse32,
+		t7dxbc.OpFirstbitLo:  firstbitLo,
+		t7dxbc.OpFirstbitHi:  firstbitHi,
+		t7dxbc.OpFirstbitShi: firstbitShi,
+		t7dxbc.OpF16tof32:    func(a uint32) uint32 { return fbits(halfToFloat(uint16(a))) },
+		t7dxbc.OpF32tof16:    func(a uint32) uint32 { return uint32(floatToHalf(math.Float32frombits(flush(a)))) },
+		t7dxbc.OpItof:        func(a uint32) uint32 { return fbits(float32(int32(a))) },
+		t7dxbc.OpUtof:        func(a uint32) uint32 { return fbits(float32(a)) },
+		t7dxbc.OpFtoi:        func(a uint32) uint32 { return ftoi(math.Float32frombits(flush(a))) },
+		t7dxbc.OpFtou:        func(a uint32) uint32 { return ftou(math.Float32frombits(flush(a))) },
 	} {
 		ops[op] = int1(f)
 	}
-	ops[dxbc.OpImad] = int3(func(a, b, c uint32) uint32 { return a*b + c })
-	ops[dxbc.OpUmad] = int3(func(a, b, c uint32) uint32 { return a*b + c })
-	ops[dxbc.OpUbfe] = int3(func(w, o, s uint32) uint32 { return ubfe(w, o, s) })
-	ops[dxbc.OpIbfe] = int3(func(w, o, s uint32) uint32 { return ibfe(w, o, s) })
-	ops[dxbc.OpBfi] = bfi
-	ops[dxbc.OpImul] = twoResults(func(a, b uint32) (uint32, uint32) {
+	ops[t7dxbc.OpImad] = int3(func(a, b, c uint32) uint32 { return a*b + c })
+	ops[t7dxbc.OpUmad] = int3(func(a, b, c uint32) uint32 { return a*b + c })
+	ops[t7dxbc.OpUbfe] = int3(func(w, o, s uint32) uint32 { return ubfe(w, o, s) })
+	ops[t7dxbc.OpIbfe] = int3(func(w, o, s uint32) uint32 { return ibfe(w, o, s) })
+	ops[t7dxbc.OpBfi] = bfi
+	ops[t7dxbc.OpImul] = twoResults(func(a, b uint32) (uint32, uint32) {
 		p := int64(int32(a)) * int64(int32(b))
 		return uint32(uint64(p) >> 32), uint32(p)
 	})
-	ops[dxbc.OpUmul] = twoResults(func(a, b uint32) (uint32, uint32) {
+	ops[t7dxbc.OpUmul] = twoResults(func(a, b uint32) (uint32, uint32) {
 		hi, lo := bits.Mul32(a, b)
 		return hi, lo
 	})
-	ops[dxbc.OpUdiv] = twoResults(func(a, b uint32) (uint32, uint32) {
+	ops[t7dxbc.OpUdiv] = twoResults(func(a, b uint32) (uint32, uint32) {
 		if b == 0 {
 			return 0xFFFFFFFF, 0xFFFFFFFF
 		}
 		return a / b, a % b
 	})
-	ops[dxbc.OpUaddc] = twoResults(func(a, b uint32) (uint32, uint32) {
+	ops[t7dxbc.OpUaddc] = twoResults(func(a, b uint32) (uint32, uint32) {
 		s, c := bits.Add32(a, b, 0)
 		return s, c
 	})
-	ops[dxbc.OpUsubb] = twoResults(func(a, b uint32) (uint32, uint32) {
+	ops[t7dxbc.OpUsubb] = twoResults(func(a, b uint32) (uint32, uint32) {
 		d, c := bits.Sub32(a, b, 0)
 		return d, c
 	})
@@ -253,7 +253,7 @@ func initInts() {
 // twoResults builds imul, umul, udiv, uaddc and usubb: two destinations, then
 // two sources.
 func twoResults(f func(a, b uint32) (uint32, uint32)) opFn {
-	return func(t *thread, in *dxbc.Instruction) error {
+	return func(t *thread, in *t7dxbc.Instruction) error {
 		a, b := t.isrc(&in.Operands[2]), t.isrc(&in.Operands[3])
 		var v0, v1 Value
 		for i := range a {
@@ -266,7 +266,7 @@ func twoResults(f func(a, b uint32) (uint32, uint32)) opFn {
 	}
 }
 
-func bfi(t *thread, in *dxbc.Instruction) error {
+func bfi(t *thread, in *t7dxbc.Instruction) error {
 	w, o := t.isrc(&in.Operands[1]), t.isrc(&in.Operands[2])
 	ins, base := t.isrc(&in.Operands[3]), t.isrc(&in.Operands[4])
 	var v Value
@@ -352,9 +352,9 @@ func ftou(f float32) uint32 {
 }
 
 func initMoves() {
-	ops[dxbc.OpMov] = func(t *thread, in *dxbc.Instruction) error {
+	ops[t7dxbc.OpMov] = func(t *thread, in *t7dxbc.Instruction) error {
 		src := &in.Operands[1]
-		if src.Modifier == dxbc.ModNone && !sat(in) {
+		if src.Modifier == t7dxbc.ModNone && !sat(in) {
 			return t.store(&in.Operands[0], t.src(src), false)
 		}
 		f := t.fsrc(src)
@@ -364,7 +364,7 @@ func initMoves() {
 		}
 		return t.store(&in.Operands[0], v, sat(in))
 	}
-	ops[dxbc.OpMovc] = func(t *thread, in *dxbc.Instruction) error {
+	ops[t7dxbc.OpMovc] = func(t *thread, in *t7dxbc.Instruction) error {
 		c, a, b := t.src(&in.Operands[1]), t.typeless(&in.Operands[2]), t.typeless(&in.Operands[3])
 		var v Value
 		for i := range v {
@@ -375,7 +375,7 @@ func initMoves() {
 		}
 		return t.store(&in.Operands[0], v, sat(in))
 	}
-	ops[dxbc.OpSwapc] = func(t *thread, in *dxbc.Instruction) error {
+	ops[t7dxbc.OpSwapc] = func(t *thread, in *t7dxbc.Instruction) error {
 		c, a, b := t.src(&in.Operands[2]), t.typeless(&in.Operands[3]), t.typeless(&in.Operands[4])
 		var v0, v1 Value
 		for i := range v0 {
@@ -389,7 +389,7 @@ func initMoves() {
 		}
 		return t.store(&in.Operands[1], v1, false)
 	}
-	ops[dxbc.OpSincos] = func(t *thread, in *dxbc.Instruction) error {
+	ops[t7dxbc.OpSincos] = func(t *thread, in *t7dxbc.Instruction) error {
 		a := t.fsrc(&in.Operands[2])
 		var s, c Value
 		for i := range a {
@@ -401,13 +401,13 @@ func initMoves() {
 		}
 		return t.store(&in.Operands[1], c, sat(in))
 	}
-	ops[dxbc.OpNop] = func(*thread, *dxbc.Instruction) error { return nil }
+	ops[t7dxbc.OpNop] = func(*thread, *t7dxbc.Instruction) error { return nil }
 }
 
 // typeless reads a movc or swapc source: bits, unless a modifier makes it a
 // float.
-func (t *thread) typeless(op *dxbc.Operand) Value {
-	if op.Modifier == dxbc.ModNone {
+func (t *thread) typeless(op *t7dxbc.Operand) Value {
+	if op.Modifier == t7dxbc.ModNone {
 		return t.src(op)
 	}
 	f := t.fsrc(op)

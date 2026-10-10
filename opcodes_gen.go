@@ -1,6 +1,6 @@
 // Code generated from Microsoft's D3D12TokenizedProgramFormat.hpp (MIT License); see NOTICE.md. DO NOT EDIT.
 
-package dxbc
+package t7dxbc
 
 // Opcode is an instruction's operation (D3D10_SB_OPCODE_TYPE and its later additions).
 type Opcode uint32
