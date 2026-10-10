@@ -1,5 +1,7 @@
 // Package t7dxbc reads compiled Direct3D 10/11 shaders (DXBC, Shader Model 4
-// and 5) and writes them back as HLSL.
+// and 5) and writes them back as HLSL. It is built for Black Ops III's
+// shaders, Shader Model 5 with their reflection, and checked on the whole of
+// that game's shader cache.
 //
 // A DXBC file is a container of chunks: RDEF (resources and constant
 // buffers, with their names), ISGN/OSGN and their variants (input and output
@@ -38,12 +40,15 @@
 // an offset computed at run time, found by testing the offset against the
 // element's layout.
 //
-// Not decompiled: hull and domain shaders, a geometry shader's streams other
-// than 0, and the high half of imul and umul. One difference remains in what
-// recompiles: a constant buffer the original declares but never reads is not
-// declared again, so the recompiled shader has no binding for it. The
-// compiler itself rarely crashes on, or miscompiles, a correct decompilation;
-// nothing in the HLSL can avoid it.
+// Not decompiled, as Black Ops III's shaders don't need it: a shader
+// stripped of its reflection, hull and domain shaders, a geometry shader's
+// streams other than 0, inputs and outputs indexed at run time, doubles,
+// msad4, uaddc and usubb, subroutines and interfaces, and the high half of
+// imul and umul. One difference remains in what recompiles: a constant
+// buffer the original declares but never reads is not declared again, so the
+// recompiled shader has no binding for it. The compiler itself rarely
+// crashes on, or miscompiles, a correct decompilation; nothing in the HLSL
+// can avoid it.
 //
 // # Testing
 //
