@@ -3,7 +3,7 @@ package sim
 import (
 	"fmt"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // word is one dword of a buffer or of group-shared memory, read and written.

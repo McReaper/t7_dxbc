@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/d3dc"
+	"github.com/McReaper/t7_dxbc/internal/d3dc"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // The compiler packs each case's declarations as its signature says: they

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 // seedChunks adds every fixture's chunk of the given kinds to a fuzz corpus.

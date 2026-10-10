@@ -3,7 +3,7 @@ package hlsl
 import (
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 func TestIdentifier(t *testing.T) {

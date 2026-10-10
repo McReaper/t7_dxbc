@@ -1,0 +1,58 @@
+name: ci
+
+# Lint and test on every PR and push to main. Linux runs what needs no
+# compiler, and fuzzes each target briefly; Windows adds the oracles, which load
+# d3dcompiler_47.dll from the system and judge every decompilation by
+# recompiling and running it.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "not gofmt-formatted:"; echo "$unformatted"; exit 1; fi
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint # complexity and size limits: .golangci.yml
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+      - name: test
+        run: go test ./...
+      - name: fuzz # a failing input becomes a named seed in the target's list
+        run: |
+          for t in FuzzParse FuzzDecodeProgram FuzzReadReflection FuzzReadSignature; do
+            go test ./dxbc -run '^$' -fuzz "^$t\$" -fuzztime 20s
+          done
+          go test ./hlsl -run '^$' -fuzz '^FuzzDecompile$' -fuzztime 30s
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: test, with the oracles
+        run: go test ./...
+      - name: the oracles ran # they skip without the compiler: that must fail here
+        shell: bash
+        run: |
+          out=$(go test -count=1 -v -run 'TestFixturesAgree$|TestLayoutsCompile$' ./internal/sim ./hlsl)
+          echo "$out" | grep -E '^(--- |ok|FAIL)'
+          if echo "$out" | grep -q -- '--- SKIP'; then echo "the oracles were skipped"; exit 1; fi

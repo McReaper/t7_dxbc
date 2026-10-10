@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // The disassembly of a vertex shader: its declarations, then its

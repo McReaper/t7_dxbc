@@ -15,8 +15,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
-	"github.com/McReaper/t7dxbc/internal/oracle"
+	"github.com/McReaper/t7_dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/internal/oracle"
 )
 
 // runs is how many random inputs each shader is checked on.

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/d3dc"
-	"github.com/McReaper/t7dxbc/internal/oracle"
+	"github.com/McReaper/t7_dxbc/internal/d3dc"
+	"github.com/McReaper/t7_dxbc/internal/oracle"
 )
 
 // TestRandomShadersAgree compiles random pixel and compute shaders with

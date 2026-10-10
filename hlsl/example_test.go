@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/hlsl"
+	"github.com/McReaper/t7_dxbc/hlsl"
 )
 
 // A blur's vertex shader comes back with its outputs as the original

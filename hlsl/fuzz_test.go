@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 // FuzzDecompile feeds the decompiler whole containers, the fixtures and

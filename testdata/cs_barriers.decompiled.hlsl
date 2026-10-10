@@ -1,4 +1,4 @@
-// Decompiled by github.com/McReaper/t7dxbc
+// Decompiled by github.com/McReaper/t7_dxbc
 
 globallycoherent RWByteAddressBuffer coherent : register(u0);
 RWStructuredBuffer<uint> local : register(u1);

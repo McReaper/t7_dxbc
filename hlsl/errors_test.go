@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 // shaderOf builds a container holding a program of the given stage (5.0) and

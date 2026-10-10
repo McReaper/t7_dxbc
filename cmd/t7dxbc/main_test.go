@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 // TestMain runs the command itself when a test starts this binary again

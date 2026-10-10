@@ -14,9 +14,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
-	"github.com/McReaper/t7dxbc/hlsl"
-	"github.com/McReaper/t7dxbc/internal/d3dc"
+	"github.com/McReaper/t7_dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/hlsl"
+	"github.com/McReaper/t7_dxbc/internal/d3dc"
 )
 
 // Available reports whether the compiler can be loaded.

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // Decompile writes a shader back as HLSL that recompiles to the same

@@ -4,7 +4,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // NewWorld fills a shader's constant buffers from a seed: each variable with

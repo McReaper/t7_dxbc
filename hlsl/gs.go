@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // A geometry shader takes its primitive's vertices as an array of a struct,

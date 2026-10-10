@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // src reads a source operand's four components through its swizzle, without

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // components are the letters of a register's components.

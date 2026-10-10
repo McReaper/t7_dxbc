@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // Value is a register's four components, as bits.

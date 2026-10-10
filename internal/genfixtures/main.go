@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/internal/d3dc"
+	"github.com/McReaper/t7_dxbc/internal/d3dc"
 )
 
 func main() {

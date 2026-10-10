@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 // msInstructions are the instruction lines of Microsoft's disassembly, after

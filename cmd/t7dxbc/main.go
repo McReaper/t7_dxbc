@@ -12,8 +12,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/McReaper/t7dxbc/dxbc"
-	"github.com/McReaper/t7dxbc/hlsl"
+	"github.com/McReaper/t7_dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/hlsl"
 )
 
 const usage = "usage: t7dxbc disasm|decompile <file>"

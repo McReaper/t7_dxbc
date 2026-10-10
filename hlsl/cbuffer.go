@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // cbufferLayout is a constant buffer's variables, and finds which one, and

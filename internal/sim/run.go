@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // World is what a run's invocations share: the constant buffers, the

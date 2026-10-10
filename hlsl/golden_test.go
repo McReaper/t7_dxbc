@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/internal/fixture"
+	"github.com/McReaper/t7_dxbc/internal/fixture"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden decompilations in testdata")

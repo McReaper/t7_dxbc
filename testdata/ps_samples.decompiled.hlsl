@@ -1,4 +1,4 @@
-// Decompiled by github.com/McReaper/t7dxbc
+// Decompiled by github.com/McReaper/t7_dxbc
 
 Texture2DMS<float4> ms : register(t0);
 RWStructuredBuffer<int> extremes : register(u1);

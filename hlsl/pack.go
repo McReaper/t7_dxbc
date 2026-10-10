@@ -3,7 +3,7 @@ package hlsl
 import (
 	"math/bits"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // interpolationChoices are the interpolation modifiers a decompiled element

@@ -1,4 +1,4 @@
-# Working on t7dxbc
+# Working on t7_dxbc
 
 How to change this repository without breaking what it guarantees. What it is, how to use it and the test commands are in `README.md`; the decompiler's design is in `go doc ./hlsl`.
 

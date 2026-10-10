@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // A counting world holds integers in [0, 8) where a world holds floats in

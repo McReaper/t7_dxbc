@@ -5,7 +5,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // alu describes an arithmetic or logic instruction: the type it reads its

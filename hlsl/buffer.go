@@ -5,7 +5,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // The buffers addressed by bytes: structured buffers and group memory by

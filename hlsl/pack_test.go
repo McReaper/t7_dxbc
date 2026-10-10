@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // sigEl is a signature element: a float, a uint when the name ends in "u",

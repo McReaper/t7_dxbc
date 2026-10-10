@@ -1,4 +1,4 @@
-# t7dxbc
+# t7_dxbc
 
 A pure-Go disassembler and decompiler for compiled Direct3D 11 shaders (DXBC), built for **Call of Duty: Black Ops III** (T7). It turns one of the game's compiled shaders back into HLSL that compiles to the same shader: the same constant buffers, resources and signatures, and code that computes the same results.
 
@@ -13,7 +13,7 @@ t7dxbc decompile <shader>   # HLSL
 As a library:
 
 ```go
-import "github.com/McReaper/t7dxbc/hlsl"
+import "github.com/McReaper/t7_dxbc/hlsl"
 
 src, err := hlsl.Decompile(compiled) // HLSL, or an error naming what isn't decompiled
 ```

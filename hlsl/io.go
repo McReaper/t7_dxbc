@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // systemInputs are the inputs a program reads by name, not through a

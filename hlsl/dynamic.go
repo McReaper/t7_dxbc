@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // A structured buffer's dword at a byte offset computed at run time can't be

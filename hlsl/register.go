@@ -5,7 +5,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7_dxbc/dxbc"
 )
 
 // Registers hold bits, HLSL variables a type, and the compiler treats a

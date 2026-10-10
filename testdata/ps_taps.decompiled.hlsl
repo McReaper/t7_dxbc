@@ -1,4 +1,4 @@
-// Decompiled by github.com/McReaper/t7dxbc
+// Decompiled by github.com/McReaper/t7_dxbc
 
 SamplerState linearClamp : register(s0);
 Texture2D<float4> image : register(t0);
