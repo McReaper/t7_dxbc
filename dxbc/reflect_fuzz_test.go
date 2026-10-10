@@ -42,6 +42,7 @@ func FuzzReadReflection(f *testing.F) {
 		for _, buf := range ref.Buffers {
 			for _, v := range buf.Vars {
 				_ = v.Type.HLSLName()
+				walkType(t, v.Type, map[*Type]bool{})
 			}
 		}
 	})
@@ -57,4 +58,17 @@ func FuzzReadSignature(f *testing.F) {
 			_, _ = ReadSignature(fourcc, b)
 		}
 	})
+}
+
+// walkType fails on a type that contains itself: whatever reads a type
+// recurses into its members, and would never end.
+func walkType(t *testing.T, ty *Type, path map[*Type]bool) {
+	if path[ty] {
+		t.Fatalf("type %q contains itself", ty.Name)
+	}
+	path[ty] = true
+	for _, m := range ty.Members {
+		walkType(t, m.Type, path)
+	}
+	delete(path, ty)
 }

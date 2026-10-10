@@ -100,14 +100,15 @@ type Binding struct {
 // rdef is a cursor over the RDEF chunk: every offset in it is from the
 // chunk's start.
 type rdef struct {
-	b     []byte
-	sm5   bool
-	types map[uint32]*Type
-	depth int
+	b       []byte
+	sm5     bool
+	types   map[uint32]*Type
+	reading map[uint32]bool // the types whose members are being read
+	depth   int
 }
 
-// maxTypeDepth bounds nested struct types, against a type whose member points
-// back at itself.
+// maxTypeDepth bounds nested struct types: a chain of distinct types can be
+// as long as the chunk allows.
 const maxTypeDepth = 32
 
 func (r *rdef) u32(off uint32) (uint32, error) {
@@ -161,7 +162,7 @@ func (r *rdef) words(off uint32, n int) ([]uint32, error) {
 
 // ReadReflection reads an RDEF chunk.
 func ReadReflection(b []byte) (*Reflection, error) {
-	r := &rdef{b: b, types: map[uint32]*Type{}}
+	r := &rdef{b: b, types: map[uint32]*Type{}, reading: map[uint32]bool{}}
 	h, err := r.words(0, 7)
 	if err != nil {
 		return nil, errors.New("RDEF header is truncated")
@@ -261,8 +262,13 @@ func (r *rdef) variables(at, n uint32) ([]Variable, error) {
 	return out, nil
 }
 
-// typeAt reads the type description at off, once: types are shared.
+// typeAt reads the type description at off, once: types are shared. A type
+// one of its own members (or theirs) points back at is an error: whatever
+// reads types recurses into their members.
 func (r *rdef) typeAt(off uint32) (*Type, error) {
+	if r.reading[off] {
+		return nil, fmt.Errorf("the type at %d contains itself", off)
+	}
 	if t, ok := r.types[off]; ok {
 		return t, nil
 	}
@@ -296,6 +302,8 @@ func (r *rdef) typeAt(off uint32) (*Type, error) {
 			}
 		}
 	}
+	r.reading[off] = true
+	defer delete(r.reading, off)
 	if t.Members, err = r.members(memberAt, uint32(f[5])); err != nil {
 		return nil, err
 	}
