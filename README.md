@@ -52,7 +52,7 @@ On Windows, with `d3dcompiler_47.dll`, each decompilation is compiled again and 
 
 A corpus run takes `DXBC_CORPUS_MAX_BYTES` (skip larger shaders) and `DXBC_WORKERS` (parallel compiles): recompiling one of the largest compute shaders takes up to 2.3 GB of memory.
 
-Run `git config core.hooksPath .githooks` once per clone: the pre-commit hook runs gofmt and golangci-lint (`.golangci.yml`).
+Run `git config core.hooksPath .githooks` once per clone: the pre-commit hook runs gofmt and golangci-lint (`.golangci.yml`). The rules for changing the code are in `AGENTS.md`.
 
 ## License
 
