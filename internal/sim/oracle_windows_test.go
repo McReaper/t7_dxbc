@@ -264,7 +264,10 @@ func checkFixture(t *testing.T, path string) {
 // ($DXBC_CORPUS, sampled by $DXBC_CORPUS_LIMIT): each shader that recompiles
 // runs on random inputs beside the original. With $DXBC_JOURNAL each result
 // is appended to that file as it comes, and a rerun skips the shaders it
-// already holds: a run over a whole cache takes hours.
+// already holds: a run over a whole cache takes hours. $DXBC_CORPUS_MAX_BYTES
+// keeps the shaders up to that size, and $DXBC_WORKERS sets how many compile
+// at once (one per CPU by default): recompiling a 100 KB compute shader takes
+// the compiler minutes and over 2 GB.
 func TestCorpusAgrees(t *testing.T) {
 	dir := os.Getenv("DXBC_CORPUS")
 	if dir == "" || !oracle.Available() {
@@ -275,17 +278,26 @@ func TestCorpusAgrees(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer j.close()
+	maxBytes := int64(math.MaxInt64)
+	if v, err := strconv.ParseInt(os.Getenv("DXBC_CORPUS_MAX_BYTES"), 10, 64); err == nil {
+		maxBytes = v
+	}
 	var todo []string
 	for _, p := range corpusPaths(t, dir) {
-		if _, ok := j.done[filepath.Base(p)]; !ok {
+		if _, ok := j.done[filepath.Base(p)]; !ok && size(p) <= maxBytes {
 			todo = append(todo, p)
 		}
 	}
 	// the largest first: they take longest to compile
 	sort.SliceStable(todo, func(a, b int) bool { return size(todo[a]) > size(todo[b]) })
+	workers := runtime.NumCPU()
+	if v, err := strconv.Atoi(os.Getenv("DXBC_WORKERS")); err == nil && v > 0 {
+		workers = v
+	}
+	t.Logf("%d shaders to check, %d already in the journal, %d at once", len(todo), len(j.done), workers)
 	var wg sync.WaitGroup
 	next := make(chan string)
-	for range runtime.NumCPU() {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
