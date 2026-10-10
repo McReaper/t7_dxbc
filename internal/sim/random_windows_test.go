@@ -63,7 +63,7 @@ func checkRandom(t *testing.T, n int, first uint64, gen func(uint64) string, tar
 			continue
 		}
 		failed, firstDiff, err := agreement(orig, again)
-		if failed == 0 && len(diffs) == 1 && strings.HasPrefix(diffs[0], "buffers: use changed (used=true)") {
+		if failed == 0 && len(diffs) > 0 && oracle.OnlyDropped(code, again.code) {
 			// the compiler proved a read dead in the decompilation and not in
 			// the original: a random shader's contrived arithmetic does that
 			diffs = nil

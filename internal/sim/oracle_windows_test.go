@@ -24,6 +24,7 @@ const runs = 12
 
 // shader is a compiled shader, read.
 type shader struct {
+	code    []byte
 	p       *dxbc.Program
 	ref     *dxbc.Reflection
 	in, out []dxbc.Element
@@ -53,7 +54,7 @@ func readShader(code []byte) (*shader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &shader{p, ref, in, out, m}, nil
+	return &shader{code, p, ref, in, out, m}, nil
 }
 
 // recompile decompiles a shader and compiles the result again, through the

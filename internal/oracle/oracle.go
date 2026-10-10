@@ -183,3 +183,66 @@ func firstDifference(want, got []string) string {
 	}
 	return "extra " + got[len(want)]
 }
+
+// OnlyDropped reports whether the recompiled shader's interface differs from
+// the original's only by reads the compiler found dead in the decompilation
+// and not in the original: a variable no longer read, a binding or an input
+// declaration gone. Its signatures, barriers and every declaration it keeps
+// must be the original's. Whether the dropped reads mattered is for the
+// simulation to say.
+func OnlyDropped(want, got []byte) bool {
+	a, err := InterfaceOf(want)
+	if err != nil {
+		return false
+	}
+	b, err := InterfaceOf(got)
+	if err != nil {
+		return false
+	}
+	if !reflect.DeepEqual(a.Inputs, b.Inputs) || !reflect.DeepEqual(a.Outputs, b.Outputs) ||
+		!reflect.DeepEqual(a.Barriers, b.Barriers) {
+		return false
+	}
+	return subset(b.Bindings, a.Bindings) && subset(b.Declarations, a.Declarations) &&
+		subset(withoutUse(b.Buffers), withoutUse(a.Buffers)) && !gainsUse(a.Buffers, b.Buffers)
+}
+
+// subset reports whether every line of sub is in set.
+func subset(sub, set []string) bool {
+	in := map[string]bool{}
+	for _, s := range set {
+		in[s] = true
+	}
+	for _, s := range sub {
+		if !in[s] {
+			return false
+		}
+	}
+	return true
+}
+
+// withoutUse drops the used= mark from buffer lines.
+func withoutUse(lines []string) []string {
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i], _, _ = strings.Cut(l, " used=")
+	}
+	return out
+}
+
+// gainsUse reports whether a variable unused in the original is used in the
+// recompiled shader.
+func gainsUse(want, got []string) bool {
+	used := map[string]bool{}
+	for _, l := range want {
+		if name, mark, ok := strings.Cut(l, " used="); ok {
+			used[name] = mark == "true"
+		}
+	}
+	for _, l := range got {
+		if name, mark, ok := strings.Cut(l, " used="); ok && mark == "true" && !used[name] {
+			return true
+		}
+	}
+	return false
+}
