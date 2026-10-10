@@ -23,7 +23,9 @@
 // structured buffer with its element struct, and the signatures packed into
 // the registers they had (the compiler packs elements by interpolation mode,
 // which a vertex shader's outputs don't record, so the modes are chosen to
-// reproduce the packing). Each instruction becomes one or more statements.
+// reproduce the packing; an element alone in a register though an earlier
+// one had room is declared as an array, whose elements each open a
+// register). Each instruction becomes one or more statements.
 //
 // DXBC registers hold bits; HLSL variables have a type, and the compiler
 // treats a float variable as a float, flushing a small integer's bits (a
@@ -37,11 +39,11 @@
 // element's layout.
 //
 // Not decompiled: hull and domain shaders, a geometry shader's streams other
-// than 0, and the high half of imul and umul. Two differences remain in what
+// than 0, and the high half of imul and umul. One difference remains in what
 // recompiles: a constant buffer the original declares but never reads is not
-// declared again, and inputs the original declared as an array pack as
-// separate elements. The compiler itself rarely crashes on, or miscompiles, a
-// correct decompilation; nothing in the HLSL can avoid it.
+// declared again, so the recompiled shader has no binding for it. The
+// compiler itself rarely crashes on, or miscompiles, a correct decompilation;
+// nothing in the HLSL can avoid it.
 //
 // # Testing
 //
@@ -51,6 +53,6 @@
 // barriers; and the original and the recompiled program run in the simulator
 // on the same random inputs and must agree. They judge the fixtures, random
 // shaders the compiler builds from generated HLSL (pixel, compute, and
-// signatures packed by random interpolation modes), and, opt in, a whole
-// shader cache (TestCorpusAgrees).
+// signatures packed by random interpolation modes and arrays), and, opt in, a
+// whole shader cache (TestCorpusAgrees).
 package dxbc
