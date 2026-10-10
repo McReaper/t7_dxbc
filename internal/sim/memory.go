@@ -3,7 +3,7 @@ package sim
 import (
 	"fmt"
 
-	"github.com/McReaper/t7dxbc"
+	"github.com/McReaper/t7dxbc/dxbc"
 )
 
 // word is one dword of a buffer or of group-shared memory, read and written.
@@ -15,9 +15,9 @@ type word struct {
 // word finds the dword a structured or raw access reaches: element index
 // and byte offset for a structured view or group memory, a byte address for a
 // raw one. Typed UAVs are reached by coordinates instead.
-func (t *thread) word(op *t7dxbc.Operand, index, byteOff uint32) (word, error) {
+func (t *thread) word(op *dxbc.Operand, index, byteOff uint32) (word, error) {
 	reg := uint32(t.index(op, 0))
-	if op.Type == t7dxbc.OperandTGSM {
+	if op.Type == dxbc.OperandTGSM {
 		d := t.m.tgsm[reg]
 		mem := t.g[reg]
 		at := byteOff / 4
@@ -46,10 +46,10 @@ func (t *thread) word(op *t7dxbc.Operand, index, byteOff uint32) (word, error) {
 		}
 		return t.w.hashed(isFloat, uint32(op.Type), reg, index, byteOff)
 	}
-	if op.Type != t7dxbc.OperandUAV {
+	if op.Type != dxbc.OperandUAV {
 		return word{mock, func(uint32) {}}, nil
 	}
-	if b.Input == t7dxbc.InputUAVTyped {
+	if b.Input == dxbc.InputUAVTyped {
 		return word{}, fmt.Errorf("u%d is typed", reg)
 	}
 	c := Cell{Reg: reg, A: index, B: byteOff / 4}
@@ -70,7 +70,7 @@ func (t *thread) word(op *t7dxbc.Operand, index, byteOff uint32) (word, error) {
 
 // memberIsFloat reports whether the dword at off in a structured element is
 // a float, the element laid out tightly.
-func memberIsFloat(t *t7dxbc.Type, off uint32) bool {
+func memberIsFloat(t *dxbc.Type, off uint32) bool {
 	if t == nil {
 		return false
 	}
@@ -82,7 +82,7 @@ func memberIsFloat(t *t7dxbc.Type, off uint32) bool {
 		}
 		return false
 	}
-	if t.Class == t7dxbc.ClassStruct {
+	if t.Class == dxbc.ClassStruct {
 		for i := len(t.Members) - 1; i >= 0; i-- {
 			if off >= t.Members[i].Offset {
 				return memberIsFloat(t.Members[i].Type, off-t.Members[i].Offset)
@@ -90,20 +90,20 @@ func memberIsFloat(t *t7dxbc.Type, off uint32) bool {
 		}
 		return false
 	}
-	return t.Base == t7dxbc.TypeFloat
+	return t.Base == dxbc.TypeFloat
 }
 
 // tightSize is a type's size in a structured buffer.
-func tightSize(t *t7dxbc.Type) uint32 {
+func tightSize(t *dxbc.Type) uint32 {
 	var one uint32
 	switch t.Class {
-	case t7dxbc.ClassScalar:
+	case dxbc.ClassScalar:
 		one = 4
-	case t7dxbc.ClassVector:
+	case dxbc.ClassVector:
 		one = 4 * uint32(t.Cols)
-	case t7dxbc.ClassMatrixRows, t7dxbc.ClassMatrixColumns:
+	case dxbc.ClassMatrixRows, dxbc.ClassMatrixColumns:
 		one = 4 * uint32(t.Rows) * uint32(t.Cols)
-	case t7dxbc.ClassStruct:
+	case dxbc.ClassStruct:
 		for _, m := range t.Members {
 			one = max(one, m.Offset+tightSize(m.Type))
 		}
@@ -111,7 +111,7 @@ func tightSize(t *t7dxbc.Type) uint32 {
 	return one * uint32(max(t.Elements, 1))
 }
 
-func ldStructured(t *thread, in *t7dxbc.Instruction) error {
+func ldStructured(t *thread, in *dxbc.Instruction) error {
 	idx, off := t.src(&in.Operands[1])[0], t.src(&in.Operands[2])[0]
 	var v Value
 	for i := range v {
@@ -124,7 +124,7 @@ func ldStructured(t *thread, in *t7dxbc.Instruction) error {
 	return t.storeFetched(in, &in.Operands[3], v, false)
 }
 
-func ldRaw(t *thread, in *t7dxbc.Instruction) error {
+func ldRaw(t *thread, in *dxbc.Instruction) error {
 	addr := t.src(&in.Operands[1])[0]
 	var v Value
 	for i := range v {
@@ -137,13 +137,13 @@ func ldRaw(t *thread, in *t7dxbc.Instruction) error {
 	return t.storeFetched(in, &in.Operands[2], v, false)
 }
 
-func storeStructured(t *thread, in *t7dxbc.Instruction) error {
+func storeStructured(t *thread, in *dxbc.Instruction) error {
 	dst := &in.Operands[0]
 	idx, off, v := t.src(&in.Operands[1])[0], t.src(&in.Operands[2])[0], t.src(&in.Operands[3])
 	return t.storeWords(dst, v, func(c uint32) (word, error) { return t.word(dst, idx, off+4*c) })
 }
 
-func storeRaw(t *thread, in *t7dxbc.Instruction) error {
+func storeRaw(t *thread, in *dxbc.Instruction) error {
 	dst := &in.Operands[0]
 	addr, v := t.src(&in.Operands[1])[0], t.src(&in.Operands[2])
 	return t.storeWords(dst, v, func(c uint32) (word, error) { return t.word(dst, 0, addr+4*c) })
@@ -151,7 +151,7 @@ func storeRaw(t *thread, in *t7dxbc.Instruction) error {
 
 // storeWords writes the destination mask's components of v, each to its
 // dword.
-func (t *thread) storeWords(dst *t7dxbc.Operand, v Value, at func(c uint32) (word, error)) error {
+func (t *thread) storeWords(dst *dxbc.Operand, v Value, at func(c uint32) (word, error)) error {
 	m := mask(dst)
 	for c := range uint32(4) {
 		if m&(1<<c) == 0 {
@@ -169,13 +169,13 @@ func (t *thread) storeWords(dst *t7dxbc.Operand, v Value, at func(c uint32) (wor
 // atomicWord finds the dword an atomic operation changes: a typed UAV by
 // coordinates, a raw view by byte address, a structured one by index and
 // offset.
-func (t *thread) atomicWord(op *t7dxbc.Operand, addr Value) (word, error) {
-	if op.Type == t7dxbc.OperandUAV {
+func (t *thread) atomicWord(op *dxbc.Operand, addr Value) (word, error) {
+	if op.Type == dxbc.OperandUAV {
 		b, err := t.binding(op)
 		if err != nil {
 			return word{}, err
 		}
-		if b.Input == t7dxbc.InputUAVTyped {
+		if b.Input == dxbc.InputUAVTyped {
 			var key [4]uint32
 			copy(key[:], addr[:uavCoordCount(b.Dim)])
 			c := Cell{uint32(t.index(op, 0)), key[0], key[1], key[2], 0}
@@ -196,8 +196,8 @@ func (t *thread) atomicWord(op *t7dxbc.Operand, addr Value) (word, error) {
 	return t.word(op, 0, addr[0])
 }
 
-func (t *thread) isStructured(op *t7dxbc.Operand) bool {
-	if op.Type == t7dxbc.OperandTGSM {
+func (t *thread) isStructured(op *dxbc.Operand) bool {
+	if op.Type == dxbc.OperandTGSM {
 		return t.m.tgsm[uint32(t.index(op, 0))][0] != 0
 	}
 	_, ok := t.m.strides[view{op.Type, uint32(t.index(op, 0))}]
@@ -206,16 +206,16 @@ func (t *thread) isStructured(op *t7dxbc.Operand) bool {
 
 // atomicFns are what each atomic operation makes of the old value and its
 // operands.
-var atomicFns = map[t7dxbc.Opcode]func(old, a, b uint32) uint32{
-	t7dxbc.OpAtomicAnd: func(o, a, _ uint32) uint32 { return o & a }, t7dxbc.OpImmAtomicAnd: func(o, a, _ uint32) uint32 { return o & a },
-	t7dxbc.OpAtomicOr: func(o, a, _ uint32) uint32 { return o | a }, t7dxbc.OpImmAtomicOr: func(o, a, _ uint32) uint32 { return o | a },
-	t7dxbc.OpAtomicXor: func(o, a, _ uint32) uint32 { return o ^ a }, t7dxbc.OpImmAtomicXor: func(o, a, _ uint32) uint32 { return o ^ a },
-	t7dxbc.OpAtomicIadd: func(o, a, _ uint32) uint32 { return o + a }, t7dxbc.OpImmAtomicIadd: func(o, a, _ uint32) uint32 { return o + a },
-	t7dxbc.OpAtomicImax: imaxFn, t7dxbc.OpImmAtomicImax: imaxFn, t7dxbc.OpAtomicImin: iminFn, t7dxbc.OpImmAtomicImin: iminFn,
-	t7dxbc.OpAtomicUmax: func(o, a, _ uint32) uint32 { return max(o, a) }, t7dxbc.OpImmAtomicUmax: func(o, a, _ uint32) uint32 { return max(o, a) },
-	t7dxbc.OpAtomicUmin: func(o, a, _ uint32) uint32 { return min(o, a) }, t7dxbc.OpImmAtomicUmin: func(o, a, _ uint32) uint32 { return min(o, a) },
-	t7dxbc.OpImmAtomicExch:  func(_, a, _ uint32) uint32 { return a },
-	t7dxbc.OpAtomicCmpStore: cmpExch, t7dxbc.OpImmAtomicCmpExch: cmpExch,
+var atomicFns = map[dxbc.Opcode]func(old, a, b uint32) uint32{
+	dxbc.OpAtomicAnd: func(o, a, _ uint32) uint32 { return o & a }, dxbc.OpImmAtomicAnd: func(o, a, _ uint32) uint32 { return o & a },
+	dxbc.OpAtomicOr: func(o, a, _ uint32) uint32 { return o | a }, dxbc.OpImmAtomicOr: func(o, a, _ uint32) uint32 { return o | a },
+	dxbc.OpAtomicXor: func(o, a, _ uint32) uint32 { return o ^ a }, dxbc.OpImmAtomicXor: func(o, a, _ uint32) uint32 { return o ^ a },
+	dxbc.OpAtomicIadd: func(o, a, _ uint32) uint32 { return o + a }, dxbc.OpImmAtomicIadd: func(o, a, _ uint32) uint32 { return o + a },
+	dxbc.OpAtomicImax: imaxFn, dxbc.OpImmAtomicImax: imaxFn, dxbc.OpAtomicImin: iminFn, dxbc.OpImmAtomicImin: iminFn,
+	dxbc.OpAtomicUmax: func(o, a, _ uint32) uint32 { return max(o, a) }, dxbc.OpImmAtomicUmax: func(o, a, _ uint32) uint32 { return max(o, a) },
+	dxbc.OpAtomicUmin: func(o, a, _ uint32) uint32 { return min(o, a) }, dxbc.OpImmAtomicUmin: func(o, a, _ uint32) uint32 { return min(o, a) },
+	dxbc.OpImmAtomicExch:  func(_, a, _ uint32) uint32 { return a },
+	dxbc.OpAtomicCmpStore: cmpExch, dxbc.OpImmAtomicCmpExch: cmpExch,
 }
 
 func imaxFn(o, a, _ uint32) uint32 { return uint32(max(int32(o), int32(a))) }
@@ -229,11 +229,11 @@ func cmpExch(o, a, b uint32) uint32 {
 	return o
 }
 
-func atomic(t *thread, in *t7dxbc.Instruction) error {
+func atomic(t *thread, in *dxbc.Instruction) error {
 	f := atomicFns[in.Op]
 	ops := in.Operands
-	var dest *t7dxbc.Operand
-	if in.Op >= t7dxbc.OpImmAtomicAlloc {
+	var dest *dxbc.Operand
+	if in.Op >= dxbc.OpImmAtomicAlloc {
 		dest, ops = &ops[0], ops[1:]
 	}
 	w, err := t.atomicWord(&ops[0], t.src(&ops[1]))
@@ -253,13 +253,13 @@ func atomic(t *thread, in *t7dxbc.Instruction) error {
 	return nil
 }
 
-func counter(t *thread, in *t7dxbc.Instruction) error {
+func counter(t *thread, in *dxbc.Instruction) error {
 	reg := uint32(t.index(&in.Operands[1], 0))
 	if t.w.counters == nil {
 		t.w.counters = map[uint32]uint32{}
 	}
 	n := t.w.counters[reg]
-	if in.Op == t7dxbc.OpImmAtomicAlloc {
+	if in.Op == dxbc.OpImmAtomicAlloc {
 		t.w.counters[reg] = n + 1
 	} else {
 		n--
@@ -270,28 +270,28 @@ func counter(t *thread, in *t7dxbc.Instruction) error {
 
 // evaluate is an eval_* instruction: the input as interpolated at the
 // pixel's center, where it is defined.
-func evaluate(t *thread, in *t7dxbc.Instruction) error {
+func evaluate(t *thread, in *dxbc.Instruction) error {
 	return t.store(&in.Operands[0], t.src(&in.Operands[1]), false)
 }
 
 func initResources() {
-	for _, op := range []t7dxbc.Opcode{t7dxbc.OpSample, t7dxbc.OpSampleB, t7dxbc.OpSampleL, t7dxbc.OpSampleD, t7dxbc.OpSampleC, t7dxbc.OpSampleCLz} {
+	for _, op := range []dxbc.Opcode{dxbc.OpSample, dxbc.OpSampleB, dxbc.OpSampleL, dxbc.OpSampleD, dxbc.OpSampleC, dxbc.OpSampleCLz} {
 		ops[op] = sample
 	}
-	for _, op := range []t7dxbc.Opcode{t7dxbc.OpGather4, t7dxbc.OpGather4C, t7dxbc.OpGather4Po, t7dxbc.OpGather4PoC} {
+	for _, op := range []dxbc.Opcode{dxbc.OpGather4, dxbc.OpGather4C, dxbc.OpGather4Po, dxbc.OpGather4PoC} {
 		ops[op] = gather
 	}
-	ops[t7dxbc.OpLd], ops[t7dxbc.OpLdMs] = ld, ld
-	ops[t7dxbc.OpLdUavTyped], ops[t7dxbc.OpStoreUavTyped] = ldUAVTyped, storeUAVTyped
-	ops[t7dxbc.OpResinfo], ops[t7dxbc.OpBufinfo], ops[t7dxbc.OpLod] = resinfo, bufinfo, lod
-	ops[t7dxbc.OpSampleInfo], ops[t7dxbc.OpSamplePos] = sampleinfo, samplepos
-	ops[t7dxbc.OpLdStructured], ops[t7dxbc.OpStoreStructured] = ldStructured, storeStructured
-	ops[t7dxbc.OpLdRaw], ops[t7dxbc.OpStoreRaw] = ldRaw, storeRaw
+	ops[dxbc.OpLd], ops[dxbc.OpLdMs] = ld, ld
+	ops[dxbc.OpLdUavTyped], ops[dxbc.OpStoreUavTyped] = ldUAVTyped, storeUAVTyped
+	ops[dxbc.OpResinfo], ops[dxbc.OpBufinfo], ops[dxbc.OpLod] = resinfo, bufinfo, lod
+	ops[dxbc.OpSampleInfo], ops[dxbc.OpSamplePos] = sampleinfo, samplepos
+	ops[dxbc.OpLdStructured], ops[dxbc.OpStoreStructured] = ldStructured, storeStructured
+	ops[dxbc.OpLdRaw], ops[dxbc.OpStoreRaw] = ldRaw, storeRaw
 	for op := range atomicFns {
 		ops[op] = atomic
 	}
-	ops[t7dxbc.OpImmAtomicAlloc], ops[t7dxbc.OpImmAtomicConsume] = counter, counter
-	for _, op := range []t7dxbc.Opcode{t7dxbc.OpEvalCentroid, t7dxbc.OpEvalSampleIndex, t7dxbc.OpEvalSnapped} {
+	ops[dxbc.OpImmAtomicAlloc], ops[dxbc.OpImmAtomicConsume] = counter, counter
+	for _, op := range []dxbc.Opcode{dxbc.OpEvalCentroid, dxbc.OpEvalSampleIndex, dxbc.OpEvalSnapped} {
 		ops[op] = evaluate
 	}
 }

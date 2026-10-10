@@ -13,14 +13,24 @@ t7dxbc decompile <shader>   # HLSL
 As a library:
 
 ```go
-src, err := t7dxbc.Decompile(compiled) // HLSL, or an error naming what isn't decompiled
+import "github.com/McReaper/t7dxbc/hlsl"
+
+src, err := hlsl.Decompile(compiled) // HLSL, or an error naming what isn't decompiled
 ```
+
+| Package | What it holds |
+|---|---|
+| `dxbc` | the format: the container, reflection, signatures, instruction decoding, disassembly |
+| `hlsl` | the decompiler |
+| `cmd/t7dxbc` | the command |
+| `internal/oracle`, `internal/sim` | the two oracles that judge a decompilation |
+| `internal/d3dc`, `internal/genfixtures`, `internal/fixture` | Microsoft's compiler, the fixtures' build, their loading in tests |
 
 The game's compiled shaders are under `share/assetconvert/shaders/pc/v7` in its mod tools.
 
 ## Scope
 
-Pixel, vertex, compute and geometry shaders in Shader Model 5 that keep their reflection: all 26,047 shaders in the game's mod tools are. The disassembly matches Microsoft's on every one of them. The package doc (`go doc`) lists what isn't decompiled (a shader stripped of its reflection, tessellation, doubles…) and the one difference left in what recompiles.
+Pixel, vertex, compute and geometry shaders in Shader Model 5 that keep their reflection: all 26,047 shaders in the game's mod tools are. The disassembly matches Microsoft's on every one of them. The `hlsl` package doc (`go doc ./hlsl`) lists what isn't decompiled (a shader stripped of its reflection, tessellation, doubles…) and the one difference left in what recompiles.
 
 ## How it is checked
 
@@ -33,9 +43,9 @@ On Windows, with `d3dcompiler_47.dll`, each decompilation is compiled again and 
 | Command | What it runs |
 |---|---|
 | `go test ./...` | every test; the oracles skip without the compiler |
-| `go test . -run TestDecompileGolden -update` | records the fixtures' decompilations after a change the oracles accept |
+| `go test ./hlsl -run TestDecompileGolden -update` | records the fixtures' decompilations after a change the oracles accept |
 | `go run ./internal/genfixtures` | compiles `testdata/*.hlsl` (first line `// dxbc: <entry> <target>`) |
-| `DXBC_CORPUS=<dir> go test . -run TestCorpus` | the disassembly and reflection readers against Microsoft's, on a cache |
+| `DXBC_CORPUS=<dir> go test ./dxbc -run TestCorpus` | the disassembly and reflection readers against Microsoft's, on a cache |
 | `DXBC_CORPUS=<dir> DXBC_JOURNAL=<tsv> go test ./internal/sim -run TestCorpusAgrees -count=1 -timeout 0` | both oracles on a cache, resumable from the journal |
 | `DXBC_ONE=<shader> go test ./internal/sim -run TestAgreeOne -v` | both oracles on one shader, logging its decompilation when they disagree |
 | `DXBC_RANDOM=<n> go test ./internal/sim -run TestRandom` | more random shaders (`DXBC_RANDOM_SEED` to start elsewhere) |

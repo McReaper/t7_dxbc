@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/McReaper/t7dxbc"
+	"github.com/McReaper/t7dxbc/dxbc"
+	"github.com/McReaper/t7dxbc/hlsl"
 )
 
 func main() {
@@ -22,11 +23,11 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "disasm":
-		c, err := t7dxbc.Parse(code)
+		c, err := dxbc.Parse(code)
 		if err != nil {
 			fail(err)
 		}
-		p, err := t7dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
+		p, err := dxbc.DecodeProgram(c.Chunk("SHEX", "SHDR"))
 		if err != nil {
 			fail(err)
 		}
@@ -34,7 +35,7 @@ func main() {
 			fmt.Println(l)
 		}
 	case "decompile":
-		src, err := t7dxbc.Decompile(code)
+		src, err := hlsl.Decompile(code)
 		fmt.Print(src)
 		if err != nil {
 			fail(err)

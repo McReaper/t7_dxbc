@@ -4,23 +4,23 @@ import (
 	"math"
 	"testing"
 
-	"github.com/McReaper/t7dxbc"
+	"github.com/McReaper/t7dxbc/dxbc"
 )
 
 // A counting world holds integers in [0, 8) where a world holds floats in
 // [-1, 2], in the variables and in the space between them alike; integer and
 // bool variables hold the same in both.
 func TestCountingWorld(t *testing.T) {
-	vec := func(base t7dxbc.VarType) *t7dxbc.Type {
-		return &t7dxbc.Type{Class: t7dxbc.ClassVector, Base: base, Rows: 1, Cols: 4}
+	vec := func(base dxbc.VarType) *dxbc.Type {
+		return &dxbc.Type{Class: dxbc.ClassVector, Base: base, Rows: 1, Cols: 4}
 	}
-	ref := &t7dxbc.Reflection{
-		Buffers: []t7dxbc.Buffer{{Name: "B", Kind: t7dxbc.CBuffer, Size: 64, Vars: []t7dxbc.Variable{
-			{Name: "f", Offset: 0, Size: 16, Type: vec(t7dxbc.TypeFloat)},
-			{Name: "u", Offset: 16, Size: 16, Type: vec(t7dxbc.TypeUint)},
-			{Name: "b", Offset: 32, Size: 16, Type: vec(t7dxbc.TypeBool)},
+	ref := &dxbc.Reflection{
+		Buffers: []dxbc.Buffer{{Name: "B", Kind: dxbc.CBuffer, Size: 64, Vars: []dxbc.Variable{
+			{Name: "f", Offset: 0, Size: 16, Type: vec(dxbc.TypeFloat)},
+			{Name: "u", Offset: 16, Size: 16, Type: vec(dxbc.TypeUint)},
+			{Name: "b", Offset: 32, Size: 16, Type: vec(dxbc.TypeBool)},
 		}}},
-		Bindings: []t7dxbc.Binding{{Name: "B", Input: t7dxbc.InputCBuffer, Point: 2}},
+		Bindings: []dxbc.Binding{{Name: "B", Input: dxbc.InputCBuffer, Point: 2}},
 	}
 	for seed := uint32(1); seed <= 20; seed++ {
 		plain, counting := NewWorld(ref, seed).CB[2], NewCountingWorld(ref, seed).CB[2]
