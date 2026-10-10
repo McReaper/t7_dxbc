@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +11,25 @@ import (
 	"github.com/McReaper/t7dxbc/dxbc"
 	"github.com/McReaper/t7dxbc/internal/fixture"
 )
+
+// TestMain runs the command itself when a test starts this binary again
+// with T7DXBC_MAIN set: main is tested through its real arguments.
+func TestMain(m *testing.M) {
+	if os.Getenv("T7DXBC_MAIN") != "" {
+		main()
+	}
+	os.Exit(m.Run())
+}
+
+// main hands the command line, without the program's name, to run.
+func TestMainTakesItsArguments(t *testing.T) {
+	cmd := exec.Command(os.Args[0], "decompile", filepath.Join(fixture.Dir(), "ps_basic.dxbc"))
+	cmd.Env = append(os.Environ(), "T7DXBC_MAIN=1")
+	out, err := cmd.Output()
+	if err != nil || !strings.HasPrefix(string(out), "// Decompiled by") {
+		t.Errorf("%v: %.60q", err, out)
+	}
+}
 
 func runWith(args ...string) (code int, stdout, stderr string) {
 	var out, errs bytes.Buffer
