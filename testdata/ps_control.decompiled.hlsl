@@ -16,7 +16,7 @@ Texture2DArray<float4> layers : register(t1);
 TextureCube<float4> sky : register(t2);
 Texture2D<float> depthMap : register(t3);
 
-void main(noperspective float4 in_SV_Position0 : SV_Position0,
+void ps_main(noperspective float4 in_SV_Position0 : SV_Position0,
   float3 in_TEXCOORD0 : TEXCOORD0,
   nointerpolation uint in_TEXCOORD1 : TEXCOORD1,
   out float4 out_SV_Target0 : SV_Target0)

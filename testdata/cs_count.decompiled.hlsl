@@ -9,7 +9,7 @@ StructuredBuffer<float3> points : register(t0);
 RWStructuredBuffer<float> nearest : register(u0);
 
 [numthreads(4, 1, 1)]
-void main(uint3 vThreadID : SV_DispatchThreadID)
+void cs_main(uint3 vThreadID : SV_DispatchThreadID)
 {
   float4 r0, r1;
   uint4 i1;

@@ -17,7 +17,7 @@ struct GSOut
 };
 
 [maxvertexcount(3)]
-void main(triangle GSIn in_v[3],
+void gs_main(triangle GSIn in_v[3],
   inout PointStream<GSOut> out_stream)
 {
   GSOut out_v = (GSOut)0;

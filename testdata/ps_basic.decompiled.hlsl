@@ -19,7 +19,7 @@ cbuffer Material : register(b0)
 SamplerState colorSampler : register(s0);
 Texture2D<float4> colorMap : register(t0);
 
-void main(float4 in_SV_Position0 : SV_Position0,
+void ps_main(float4 in_SV_Position0 : SV_Position0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   float3 in_NORMAL0 : NORMAL0,
   out float4 out_SV_Target0 : SV_Target0)

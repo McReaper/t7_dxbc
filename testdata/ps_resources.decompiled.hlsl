@@ -19,7 +19,7 @@ Texture2D<float> shadow : register(t5);
 Texture2DArray<uint2> ids : register(t6);
 Buffer<uint4> lookup : register(t7);
 
-void main(noperspective float4 in_SV_Position0 : SV_Position0,
+void ps_main(noperspective float4 in_SV_Position0 : SV_Position0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   centroid float3 in_NORMAL0 : NORMAL0,
   nointerpolation uint2 in_TEXCOORD1 : TEXCOORD1,

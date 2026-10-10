@@ -3,7 +3,7 @@
 SamplerState linearClamp : register(s0);
 Texture2D<float4> image : register(t0);
 
-void main(float4 in_SV_Position0 : SV_Position0,
+void ps_main(float4 in_SV_Position0 : SV_Position0,
   float2 in_TEXCOORD0[4] : TEXCOORD0,
   float in_TEXCOORD4 : TEXCOORD4,
   out float4 out_SV_Target0 : SV_Target0)

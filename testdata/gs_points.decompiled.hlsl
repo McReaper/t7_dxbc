@@ -21,7 +21,7 @@ struct GSOut
 };
 
 [maxvertexcount(2)]
-void main(point GSIn in_v[1],
+void gs_main(point GSIn in_v[1],
   inout LineStream<GSOut> out_stream)
 {
   GSOut out_v = (GSOut)0;

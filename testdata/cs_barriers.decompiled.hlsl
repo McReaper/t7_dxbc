@@ -8,7 +8,7 @@ groupshared uint g1[32][1];
 uint dxbc_bfi(uint w, uint o, uint i, uint b) { w &= 31; o &= 31; uint m = ((1u << w) - 1) << o; return ((i << o) & m) | (b & ~m); }
 
 [numthreads(32, 1, 1)]
-void main(uint3 vThreadGroupID : SV_GroupID,
+void cs_main(uint3 vThreadGroupID : SV_GroupID,
   uint vThreadIDInGroupFlattened : SV_GroupIndex)
 {
   float4 r1;

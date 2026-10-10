@@ -25,7 +25,7 @@ struct GSOut
 
 [maxvertexcount(18)]
 [instance(2)]
-void main(triangle GSIn in_v[3],
+void gs_main(triangle GSIn in_v[3],
   inout TriangleStream<GSOut> out_stream,
   uint vPrim : SV_PrimitiveID,
   uint vGSInstanceID : SV_GSInstanceID)

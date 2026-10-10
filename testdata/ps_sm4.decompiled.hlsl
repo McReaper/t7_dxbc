@@ -37,7 +37,7 @@ cbuffer Scene : register(b0)
 
 StructuredBuffer<flags_t> flags : register(t0);
 
-void main(noperspective float4 in_SV_Position0 : SV_Position0,
+void ps_main(noperspective float4 in_SV_Position0 : SV_Position0,
   nointerpolation uint in_TEXCOORD0 : TEXCOORD0,
   out float4 out_SV_Target0 : SV_Target0)
 {

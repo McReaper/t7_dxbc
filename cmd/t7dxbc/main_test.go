@@ -69,7 +69,7 @@ func TestPartialDecompilation(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out, errs := runWith("decompile", stripped)
-	if code != 1 || !strings.Contains(out, "void main(") ||
+	if code != 1 || !strings.Contains(out, "void ps_main(") ||
 		!strings.HasPrefix(errs, "t7dxbc: not decompiled: cb0 without reflection") {
 		t.Errorf("exit %d, stderr %q, stdout\n%s", code, errs, out)
 	}

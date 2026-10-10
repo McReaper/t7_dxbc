@@ -41,7 +41,7 @@ func Recompile(code []byte) (src string, out []byte, err error) {
 		return src, nil, fmt.Errorf("decompile: %w", err)
 	}
 	target := fmt.Sprintf("%s_%d_%d", targets[p.Stage], p.Major, p.Minor)
-	out, err = d3dc.Compile([]byte(src), "decompiled.hlsl", "main", target)
+	out, err = d3dc.Compile([]byte(src), "decompiled.hlsl", hlsl.Entry(p.Stage), target)
 	if err != nil {
 		return src, nil, fmt.Errorf("compile: %w", err)
 	}

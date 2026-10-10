@@ -15,7 +15,7 @@ cbuffer Camera : register(b0)
 StructuredBuffer<Instance> instances : register(t0);
 ByteAddressBuffer extra : register(t1);
 
-void main(float3 in_POSITION0 : POSITION0,
+void vs_main(float3 in_POSITION0 : POSITION0,
   uint in_SV_InstanceID0 : SV_InstanceID0,
   out float4 out_SV_Position0 : SV_Position0,
   out float4 out_COLOR0 : COLOR0)

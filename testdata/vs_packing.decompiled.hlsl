@@ -8,7 +8,7 @@ cbuffer Frame : register(b0)
 }
 
 
-void main(float3 in_POSITION0 : POSITION0,
+void vs_main(float3 in_POSITION0 : POSITION0,
   float3 in_NORMAL0 : NORMAL0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   uint in_SV_VertexID0 : SV_VertexID0,

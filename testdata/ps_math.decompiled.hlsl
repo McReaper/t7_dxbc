@@ -41,7 +41,7 @@ uint4 dxbc_firstbit_shi(int4 x) { int4 b = firstbithigh(x); return b == -1 ? 0xf
 int dxbc_ibfe(uint w, uint o, int s) { w &= 31; o &= 31; if (w == 0) return 0; if (w + o < 32) return (s << (32 - (w + o))) >> (32 - w); return s >> o; }
 uint dxbc_ubfe(uint w, uint o, uint s) { w &= 31; o &= 31; if (w == 0) return 0; if (w + o < 32) return (s << (32 - (w + o))) >> (32 - w); return s >> o; }
 
-void main(float4 in_SV_Position0 : SV_Position0,
+void ps_main(float4 in_SV_Position0 : SV_Position0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   nointerpolation uint4 in_TEXCOORD1 : TEXCOORD1,
   nointerpolation int4 in_TEXCOORD2 : TEXCOORD2,

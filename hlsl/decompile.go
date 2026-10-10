@@ -13,14 +13,11 @@ import (
 // Decompile writes a shader back as HLSL that recompiles to the same
 // interface: the constant buffers with their variables at their offsets, the
 // resources and samplers under their names (a structured buffer with its
-// element struct), the signatures as the entry point's parameters, and every
-// instruction as one or more statements.
-//
-// DXBC registers have no type; the HLSL keeps them as float4 and reads or
-// writes an integer operation's operands through asint, asuint and asfloat,
-// which reinterpret bits and cost nothing, so the arithmetic is exact. The
-// names are the compiler's own, from the reflection; the temporaries are r#,
-// the inputs v# and the outputs o#, as in the disassembly.
+// element struct), the signatures as the parameters of the entry point,
+// named as Black Ops III's techsets expect (Entry), and every instruction as
+// one or more statements. The package doc says how registers become
+// variables. A shader it can't finish comes back with what it wrote, and an
+// error naming what is missing.
 func Decompile(b []byte) (string, error) {
 	c, err := dxbc.Parse(b)
 	if err != nil {
@@ -52,6 +49,14 @@ func Decompile(b []byte) (string, error) {
 	e := newEmitter(p, ref, in, out)
 	return e.emit()
 }
+
+// Entry is the entry point Decompile writes for a stage: the one Black Ops
+// III's techsets compile a shader source with, ps_main, vs_main, gs_main or
+// cs_main.
+func Entry(s dxbc.Stage) string { return entries[s] }
+
+var entries = map[dxbc.Stage]string{dxbc.StagePixel: "ps_main", dxbc.StageVertex: "vs_main",
+	dxbc.StageGeometry: "gs_main", dxbc.StageCompute: "cs_main"}
 
 // emitter writes one shader.
 type emitter struct {

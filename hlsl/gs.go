@@ -132,7 +132,7 @@ func (e *emitter) geometryEntry() {
 			params = append(params, fmt.Sprintf("%s %s : %s", systemInputs[t][0], t.Prefix(), systemInputs[t][1]))
 		}
 	}
-	e.line("void main(%s)", strings.Join(params, ",\n  "))
+	e.line("void %s(%s)", Entry(e.p.Stage), strings.Join(params, ",\n  "))
 	e.line("{")
 	e.line("  GSOut out_v = (GSOut)0;")
 }

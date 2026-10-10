@@ -6,7 +6,7 @@ cbuffer Blur : register(b0)
 }
 
 
-void main(float4 in_POSITION0 : POSITION0,
+void vs_main(float4 in_POSITION0 : POSITION0,
   float2 in_TEXCOORD0 : TEXCOORD0,
   out float4 out_SV_Position0 : SV_Position0,
   out float2 out_TEXCOORD0[4] : TEXCOORD0,

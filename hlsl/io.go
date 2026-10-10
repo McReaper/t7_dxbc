@@ -141,7 +141,7 @@ func (e *emitter) entry() {
 				e.outputSemantic(systemOutputs[t][1])))
 		}
 	}
-	e.line("void main(%s)", strings.Join(params, ",\n  "))
+	e.line("void %s(%s)", Entry(e.p.Stage), strings.Join(params, ",\n  "))
 	e.line("{")
 }
 

@@ -63,7 +63,7 @@ void dxbc_store_bins(uint dxbc_i, uint dxbc_o0, uint dxbc_value)
 }
 
 [numthreads(8, 4, 1)]
-void main(uint3 vThreadID : SV_DispatchThreadID,
+void cs_main(uint3 vThreadID : SV_DispatchThreadID,
   uint vThreadIDInGroupFlattened : SV_GroupIndex)
 {
   uint4 i0, i1, i2, i3;

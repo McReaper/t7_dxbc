@@ -16,7 +16,7 @@ uint2 dxbc_firstbit_shi(int2 x) { int2 b = firstbithigh(x); return b == -1 ? 0xf
 uint3 dxbc_firstbit_shi(int3 x) { int3 b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
 uint4 dxbc_firstbit_shi(int4 x) { int4 b = firstbithigh(x); return b == -1 ? 0xffffffffu : asuint(31 - b); }
 
-void main(float4 in_TEXCOORD0 : TEXCOORD0,
+void ps_main(float4 in_TEXCOORD0 : TEXCOORD0,
   nointerpolation uint4 in_TEXCOORD1 : TEXCOORD1,
   nointerpolation int4 in_TEXCOORD2 : TEXCOORD2,
   out float4 out_SV_Target0 : SV_Target0,
