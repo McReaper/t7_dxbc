@@ -60,18 +60,20 @@ func fieldName(el Element) string { return fmt.Sprintf("%s%d", identifier(el.Nam
 // inputName is what reads an input element: its parameter, or for a
 // geometry shader the field of the vertex the index picks.
 func (e *emitter) inputName(el Element, vertex string) string {
+	field := e.inFields[slot{el.Register, el.Mask}]
 	if e.p.Stage == StageGeometry {
-		return fmt.Sprintf("in_v[%s].%s", vertex, fieldName(el))
+		return fmt.Sprintf("in_v[%s].%s", vertex, field)
 	}
-	return paramName("in", el)
+	return "in_" + field
 }
 
 // outputName is what writes an output element.
 func (e *emitter) outputName(el Element) string {
+	field := e.outFields[slot{el.Register, el.Mask}]
 	if e.p.Stage == StageGeometry {
-		return "out_v." + fieldName(el)
+		return "out_v." + field
 	}
-	return paramName("out", el)
+	return "out_" + field
 }
 
 // checkGeometry rejects what the decompiler doesn't write yet: several
@@ -98,16 +100,13 @@ func (e *emitter) checkGeometry() error {
 // with the interpolation modes that pack them as the signatures do.
 func (e *emitter) vertexStructs() {
 	for _, s := range []struct {
-		name string
-		els  []Element
-	}{{"GSIn", e.in}, {"GSOut", e.out}} {
-		modes := packModes(s.els, nil)
+		name  string
+		decls []sigDecl
+	}{{"GSIn", e.inDecls}, {"GSOut", e.outDecls}} {
 		e.line("struct %s", s.name)
 		e.line("{")
-		for _, el := range s.els {
-			if el.Register != NoRegister {
-				e.line("  %s%s %s : %s%d;", modes[el.Register], elementHLSLType(el), fieldName(el), el.Name, el.Index)
-			}
+		for _, d := range s.decls {
+			e.line("  %s;", d.declaration(""))
 		}
 		e.line("};")
 		e.line("")

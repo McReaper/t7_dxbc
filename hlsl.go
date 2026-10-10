@@ -75,6 +75,9 @@ type emitter struct {
 	uavFlags map[uint32]uint32 // u# -> its declaration's flags
 	global   uint32            // the global flags
 
+	inDecls, outDecls   []sigDecl       // how the signatures are declared
+	inFields, outFields map[slot]string // what names each element in them
+
 	generated      map[string]string // helpers written for this shader, by name
 	generatedOrder []string
 	unknown        map[string]bool
@@ -129,6 +132,7 @@ func (e *emitter) emit() (string, error) {
 			return "", err
 		}
 	}
+	e.layoutSignatures()
 	e.findBanks(body)
 	e.declarations()
 	e.signatureStructs()

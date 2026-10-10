@@ -307,9 +307,10 @@ func (g *shaderGen) statement(depth int) {
 var interpolationModes = []string{"", "", "nointerpolation ", "centroid ", "noperspective ", "noperspective centroid ",
 	"sample ", "linear "}
 
-// signatureElement is one random element: its declaration and an expression
-// of its type built from a seed value.
-func (g *shaderGen) signatureElement(i int, withMode bool) (decl, value string) {
+// signatureElement is one random element, or an array of up to three: its
+// declaration, the statements that set it from a seed value, and one of its
+// elements to read.
+func (g *shaderGen) signatureElement(i int, withMode bool) (decl string, sets []string, read string) {
 	kind, n := g.r.IntN(3), 1+g.r.IntN(4)
 	mode := ""
 	switch {
@@ -318,16 +319,29 @@ func (g *shaderGen) signatureElement(i int, withMode bool) (decl, value string) 
 	case withMode:
 		mode = g.pick(interpolationModes...)
 	}
-	decl = fmt.Sprintf("%s%s v%d : TEXCOORD%d", mode, vec(kind, n), i, i)
-	switch kind {
-	case kFloat:
-		value = fmt.Sprintf("(%s)(p.%s * %d.5)", vec(kind, n), g.swizzle(n), i+1)
-	case kUint:
-		value = fmt.Sprintf("(%s)(id + %du)", vec(kind, n), i)
-	default:
-		value = fmt.Sprintf("(%s)(int(id) - %d)", vec(kind, n), i*3)
+	name, targets := fmt.Sprintf("v%d", i), []string{fmt.Sprintf("v%d", i)}
+	decl = fmt.Sprintf("%s%s %s : TEXCOORD%d", mode, vec(kind, n), name, 4*i)
+	if g.r.IntN(3) == 0 { // an array: each element opens a register of its own
+		count := 1 + g.r.IntN(3)
+		decl = fmt.Sprintf("%s%s %s[%d] : TEXCOORD%d", mode, vec(kind, n), name, count, 4*i)
+		targets = nil
+		for k := range count {
+			targets = append(targets, fmt.Sprintf("%s[%d]", name, k))
+		}
 	}
-	return decl, value
+	for k, t := range targets {
+		var value string
+		switch kind {
+		case kFloat:
+			value = fmt.Sprintf("(%s)(p.%s * %d.5)", vec(kind, n), g.swizzle(n), i+1+10*k)
+		case kUint:
+			value = fmt.Sprintf("(%s)(id + %du)", vec(kind, n), i+7*k)
+		default:
+			value = fmt.Sprintf("(%s)(int(id) - %d)", vec(kind, n), i*3+k)
+		}
+		sets = append(sets, fmt.Sprintf("\t%s = %s;", t, value))
+	}
+	return decl, sets, targets[g.r.IntN(len(targets))]
 }
 
 // randomVertexShader writes a vertex shader whose outputs are random
@@ -336,9 +350,9 @@ func randomVertexShader(seed uint64) string {
 	g := &shaderGen{r: rand.New(rand.NewPCG(seed, seed^0x2545F4914F6CDD1D))}
 	var params, body []string
 	for i := range 2 + g.r.IntN(8) {
-		decl, value := g.signatureElement(i, true)
+		decl, sets, _ := g.signatureElement(i, true)
 		params = append(params, "out "+decl)
-		body = append(body, fmt.Sprintf("\tv%d = %s;", i, value))
+		body = append(body, sets...)
 	}
 	if g.r.IntN(3) == 0 {
 		params = append(params, "out float clip : SV_ClipDistance0")
@@ -355,10 +369,10 @@ func randomPixelInputs(seed uint64) string {
 	params := []string{"float4 pos : SV_Position"}
 	var sum []string
 	for i := range 2 + g.r.IntN(8) {
-		decl, _ := g.signatureElement(i, true)
+		decl, _, read := g.signatureElement(i, true)
 		params = append(params, decl)
 		if g.r.IntN(3) != 0 {
-			sum = append(sum, fmt.Sprintf("dot(float4(v%d.xxxx), float4(1, 2, 3, 4))", i))
+			sum = append(sum, fmt.Sprintf("dot(float4(%s.xxxx), float4(1, 2, 3, 4))", read))
 		}
 	}
 	if len(sum) == 0 {

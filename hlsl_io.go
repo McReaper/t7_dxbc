@@ -30,9 +30,51 @@ func (e *emitter) signatureStructs() {
 	}
 }
 
-// paramName is the parameter an element arrives in or leaves through.
-func paramName(prefix string, el Element) string {
-	return fmt.Sprintf("%s_%s%d", prefix, identifier(el.Name), el.Index)
+// slot is where an element is: its register and components.
+type slot struct {
+	reg  uint32
+	mask uint8
+}
+
+// layoutSignatures declares the signatures so that they pack as they were,
+// and names each element in them.
+func (e *emitter) layoutSignatures() {
+	switch e.p.Stage {
+	case StagePixel:
+		e.inDecls, e.outDecls = signatureLayout(e.in, e.inMods), plainLayout(e.out)
+	case StageVertex:
+		e.inDecls, e.outDecls = plainLayout(e.in), signatureLayout(e.out, nil)
+	case StageGeometry:
+		e.inDecls, e.outDecls = signatureLayout(e.in, nil), signatureLayout(e.out, nil)
+	}
+	e.inFields, e.outFields = fieldNames(e.inDecls), fieldNames(e.outDecls)
+}
+
+// fieldNames names each element of declarations: its field, or its array's
+// and its index in it.
+func fieldNames(decls []sigDecl) map[slot]string {
+	names := map[slot]string{}
+	for _, d := range decls {
+		for i, el := range d.els {
+			name := fieldName(d.els[0])
+			if d.array {
+				name += fmt.Sprintf("[%d]", i)
+			}
+			names[slot{el.Register, el.Mask}] = name
+		}
+	}
+	return names
+}
+
+// declaration declares elements as a parameter or a field: their modifiers,
+// type, name and semantic.
+func (d sigDecl) declaration(prefix string) string {
+	first := d.els[0]
+	name := prefix + fieldName(first)
+	if d.array {
+		name += fmt.Sprintf("[%d]", len(d.els))
+	}
+	return fmt.Sprintf("%s%s %s : %s%d", d.mode, elementHLSLType(first), name, first.Name, first.Index)
 }
 
 func elementHLSLType(el Element) string {
@@ -78,20 +120,9 @@ func (e *emitter) entry() {
 	if e.p.Stage == StagePixel && e.global&GlobalForceEarlyDepthStencil != 0 {
 		e.line("[earlydepthstencil]")
 	}
-	var inModes, outModes map[uint32]string
-	switch e.p.Stage {
-	case StagePixel:
-		inModes = packModes(e.in, e.inMods)
-	case StageVertex:
-		outModes = packModes(e.out, nil)
-	}
 	var params []string
-	for _, el := range e.in {
-		if el.Register == NoRegister {
-			continue
-		}
-		params = append(params, fmt.Sprintf("%s%s %s : %s%d", inModes[el.Register], elementHLSLType(el),
-			paramName("in", el), el.Name, el.Index))
+	for _, d := range e.inDecls {
+		params = append(params, d.declaration("in_"))
 	}
 	used := e.usedOperands()
 	for _, t := range sortedTypes(systemInputs) {
@@ -99,12 +130,8 @@ func (e *emitter) entry() {
 			params = append(params, fmt.Sprintf("%s %s : %s", systemInputs[t][0], operandPrefixes[t], systemInputs[t][1]))
 		}
 	}
-	for _, el := range e.out {
-		if el.Register == NoRegister {
-			continue
-		}
-		params = append(params, fmt.Sprintf("out %s%s %s : %s%d", outModes[el.Register], elementHLSLType(el),
-			paramName("out", el), el.Name, el.Index))
+	for _, d := range e.outDecls {
+		params = append(params, "out "+d.declaration("out_"))
 	}
 	for _, t := range sortedTypes(systemOutputs) {
 		if used[t] {
