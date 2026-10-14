@@ -3,11 +3,12 @@ name: ci
 # Lint and test on every PR and push to main. Linux runs what needs no
 # compiler, and fuzzes each target briefly; Windows adds the oracles, which load
 # d3dcompiler_47.dll from the system and judge every decompilation by
-# recompiling and running it.
+# recompiling and running it. A release runs it again on its tag (release.yml).
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read

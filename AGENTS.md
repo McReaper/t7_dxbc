@@ -53,3 +53,10 @@ Generate mutants with go-mutesting (`/no-exec`; under Git Bash, set `MSYS_NO_PAT
 - `.golangci.yml` caps a function at 80 lines, 60 statements, cyclomatic 20, cognitive 30, and a file at 500 code lines. Split by what the code does rather than raising a limit.
 - Commits are conventional (`fix:`, `feat:`, `test(sim):`, `refactor:`, `docs:`): the subject says what changed, the body why and how it was verified.
 - Docs state rules, not their history: how something was found belongs in the commit message.
+
+## Releases
+
+- A release is a `v*` tag on a commit of main. `release.yml` runs CI on it again, the oracles included, before GoReleaser publishes anything.
+- The changelog is the subjects of the `feat`, `fix` and `perf` commits since the last tag: write them for the person reading the release. Highlights, if a release needs them, go in `.github/release-notes/<tag>.md`, committed before the tag.
+- The command prints the version GoReleaser sets with `-X main.version`; `TestReleaseBuildSetsVersion` reads that flag from `.github/goreleaser.yaml`, so rename both together.
+- `docs/media/social-preview.png` is the link preview: GitHub takes it only by hand, in the repository's Settings → Social preview.

@@ -1,0 +1,78 @@
+# GoReleaser: builds the pure-Go t7dxbc command for Windows, Linux and macOS
+# and cuts a GitHub Release whose changelog comes from the conventional
+# commits. The version is the pushed tag's (v0.1.0 → 0.1.0).
+#
+# Check: goreleaser check · dry run: goreleaser release --snapshot --clean
+# (both with --config .github/goreleaser.yaml)
+version: 2
+
+builds:
+  - id: t7dxbc
+    main: ./cmd/t7dxbc
+    binary: t7dxbc
+    env:
+      - CGO_ENABLED=0 # pure Go: no C toolchain, a clean cross-compile
+    goos: [windows, linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      # cmd/t7dxbc's TestReleaseBuildSetsVersion reads the -X flag from here.
+      - -s -w
+      - -X main.version={{ .Version }}
+
+archives:
+  - id: t7dxbc
+    name_template: "t7dxbc_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - NOTICE.md
+
+checksum:
+  name_template: checksums.txt
+
+# Only what a user of the command or the packages would notice: features,
+# fixes and speed-ups. test/refactor/docs/ci/chore match no group, so
+# GoReleaser drops them. Each line is the subject without its "type(scope):",
+# the scope kept as a bold label. A hand-written .github/release-notes/<tag>.md,
+# if there is one, goes on top (the release workflow adds it).
+changelog:
+  use: git
+  sort: asc
+  format: >-
+    {{ $p := split .Message ": " }}{{ if gt (len $p) 1 }}{{ $h := index $p 0 }}{{ if contains $h "(" }}**{{ index (split (index (split $h "(") 1) ")") 0 }}:** {{ end }}{{ trimprefix .Message (print $h ": ") }}{{ else }}{{ .Message }}{{ end }}
+  groups:
+    - title: "✨ New"
+      regexp: '^feat(\(.+\))?!?:.+$'
+      order: 0
+    - title: "🐛 Fixed"
+      regexp: '^fix(\(.+\))?!?:.+$'
+      order: 1
+    - title: "⚡ Faster"
+      regexp: '^perf(\(.+\))?!?:.+$'
+      order: 2
+
+release:
+  name_template: "t7dxbc {{ .Tag }}"
+  header: |
+    A pure-Go disassembler and decompiler for Call of Duty: Black Ops III's compiled Direct3D 11 shaders. It turns one back into HLSL that compiles to the same shader: the same constant buffers, resources and signatures, and code that computes the same results, checked by recompiling every decompilation and running both on a simulator.
+  footer: |
+    ## Install
+
+    Download the archive for your system, extract it, and run:
+
+    ```
+    t7dxbc disasm <shader>      # the instructions, as Microsoft's disassembler writes them
+    t7dxbc decompile <shader>   # HLSL
+    ```
+
+    The game's compiled shaders are under `share/assetconvert/shaders/pc/v7` in its mod tools.
+
+    With Go: `go install github.com/McReaper/t7_dxbc/cmd/t7dxbc@{{ .Tag }}`, or as a library, `go get github.com/McReaper/t7_dxbc@{{ .Tag }}`.
+
+    For an AI agent, [T7 Companion](https://github.com/McReaper/t7_companion)'s `shader_decompile` tool runs it on the shader a material type uses.

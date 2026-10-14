@@ -1,0 +1,61 @@
+# Cuts a GitHub Release when a v* tag is pushed on main: CI runs again on the
+# tag, the oracles included, then GoReleaser builds t7dxbc and writes the
+# changelog from the conventional commits. See .github/goreleaser.yaml.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  goreleaser:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the whole history: the changelog diffs tags
+      - name: the tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME is not on main: tag a commit of main"
+            exit 1
+          fi
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean --config .github/goreleaser.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # .github/release-notes/<tag>.md, if the tag has one, goes on top of the
+      # generated changelog. A re-run doesn't add it twice.
+      - name: hand-written highlights
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes=".github/release-notes/$GITHUB_REF_NAME.md"
+          if [ ! -f "$notes" ]; then
+            echo "no $notes: the generated notes stay as they are"
+            exit 0
+          fi
+          body="$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)"
+          if grep -qxF "$(head -n1 "$notes")" <<<"$body"; then
+            echo "the highlights are already in the release notes"
+            exit 0
+          fi
+          # Split around the generated heading rather than ${body/…/…}: in bash 5.2
+          # an "&" in the replacement expands to the matched text.
+          printf '%s%s\n\n## All changes%s\n' "${body%%## Changelog*}" "$(cat "$notes")" "${body#*## Changelog}" > "$RUNNER_TEMP/notes.md"
+          gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
