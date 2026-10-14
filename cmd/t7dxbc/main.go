@@ -2,6 +2,7 @@
 //
 //	t7dxbc disasm <file>      the instructions, as Microsoft's disassembler writes them
 //	t7dxbc decompile <file>   HLSL that recompiles to the same interface
+//	t7dxbc version            the release it was built from
 //
 // A shader the decompiler can't finish still prints what it wrote, with the
 // error that names what is missing.
@@ -11,18 +12,27 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/McReaper/t7_dxbc/dxbc"
 	"github.com/McReaper/t7_dxbc/hlsl"
 )
 
-const usage = "usage: t7dxbc disasm|decompile <file>"
+const usage = "usage: t7dxbc disasm|decompile <file>, or t7dxbc version"
+
+// version is set by the release build (.github/goreleaser.yaml).
+var version string
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
 // run carries out a command line and returns the exit code: 0, 1 for a
 // shader that couldn't be read or decompiled, 2 for a wrong command line.
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "version" {
+		fmt.Fprintln(stdout, "t7dxbc", release(moduleVersion()))
+		return 0
+	}
 	if len(args) != 2 || args[0] != "disasm" && args[0] != "decompile" {
 		fmt.Fprintln(stderr, usage)
 		return 2
@@ -42,6 +52,26 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// release names the version: the one the release build set, else the
+// module's as go build records it (a tag, or a pseudo-version from the
+// commit), else devel when the build recorded none.
+func release(module string) string {
+	switch {
+	case version != "":
+		return version
+	case module == "" || module == "(devel)":
+		return "devel"
+	}
+	return strings.TrimPrefix(module, "v")
+}
+
+func moduleVersion() string {
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		return bi.Main.Version
+	}
+	return ""
 }
 
 func disassemble(code []byte, w io.Writer) error {

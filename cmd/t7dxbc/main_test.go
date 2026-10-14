@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -75,6 +77,55 @@ func TestPartialDecompilation(t *testing.T) {
 	}
 }
 
+func TestVersion(t *testing.T) {
+	if code, out, errs := runWith("version"); code != 0 || errs != "" || out != "t7dxbc "+release(moduleVersion())+"\n" {
+		t.Errorf("exit %d, stderr %q, stdout %q", code, errs, out)
+	}
+	for module, want := range map[string]string{
+		"v0.2.0":                             "0.2.0",
+		"v0.0.0-20261010154416-eda05ce43426": "0.0.0-20261010154416-eda05ce43426",
+		"(devel)":                            "devel",
+		"":                                   "devel",
+	} {
+		if got := release(module); got != want {
+			t.Errorf("module %q: %q, want %q", module, got, want)
+		}
+	}
+	version = "1.2.3"
+	defer func() { version = "" }()
+	if got := release("v0.2.0"); got != "1.2.3" {
+		t.Errorf("the release build's version: %q", got)
+	}
+}
+
+// The release build's -X flag, as .github/goreleaser.yaml writes it, sets the
+// version the command prints.
+func TestReleaseBuildSetsVersion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the command")
+	}
+	config, err := os.ReadFile(filepath.Join("..", "..", ".github", "goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`-X (\S+)=\{\{ \.Version \}\}`).FindSubmatch(config)
+	if m == nil {
+		t.Fatal("no -X <var>={{ .Version }} in the release config")
+	}
+	bin := filepath.Join(t.TempDir(), "t7dxbc")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	build := exec.Command("go", "build", "-ldflags", "-X "+string(m[1])+"=1.2.3", "-o", bin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	out, err := exec.Command(bin, "version").Output()
+	if err != nil || string(out) != "t7dxbc 1.2.3\n" {
+		t.Errorf("%v: %q", err, out)
+	}
+}
+
 func TestErrors(t *testing.T) {
 	notShader := filepath.Join(t.TempDir(), "x.dxbc")
 	if err := os.WriteFile(notShader, []byte("not a shader"), 0o644); err != nil {
@@ -93,6 +144,7 @@ func TestErrors(t *testing.T) {
 		{[]string{"disasm"}, 2, "usage:"},
 		{[]string{"run", notShader}, 2, "usage:"},
 		{[]string{"disasm", notShader, "extra"}, 2, "usage:"},
+		{[]string{"version", notShader}, 2, "usage:"},
 		{[]string{"disasm", filepath.Join(t.TempDir(), "missing")}, 1, "t7dxbc: open "},
 		{[]string{"disasm", notShader}, 1, "t7dxbc: "},
 		{[]string{"disasm", noProgram}, 1, "t7dxbc: "},
